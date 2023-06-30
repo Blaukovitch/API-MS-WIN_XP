@@ -1,0 +1,4 @@
+LIBRARY scalling
+EXPORTS
+CallNtPowerInformation @1
+PowerDeterminePlatformRoleEx  @40
