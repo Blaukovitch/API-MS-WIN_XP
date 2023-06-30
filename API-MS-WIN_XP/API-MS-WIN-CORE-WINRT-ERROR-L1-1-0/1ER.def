@@ -1,9 +1,0 @@
-LIBRARY err
-EXPORTS
-RoOriginateError @484
-RoTransformError @496
-RoOriginateErrorW @495
-RoClearError @470
-IsErrorPropagationEnabled @458
-RoCaptureErrorContext @469
-RoFailFastWithErrorContext @471

@@ -1,4 +1,0 @@
-LIBRARY scalling
-EXPORTS
-GetDpiForMonitor @10
-SetProcessDpiAwareness  @92

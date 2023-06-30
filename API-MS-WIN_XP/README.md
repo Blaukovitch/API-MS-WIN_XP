@@ -1,9 +1,0 @@
-# API-MS-WIN_XP
-Microsoft API system libs Windows 11/10/8/ from Windows XP/7  
-  
-- API-MS-WIN-CORE-WINRT-ERROR-L1-1-0  
-- API-MS-WIN-CORE-WINRT-L1-1-0   
-- API-MS-WIN-CORE-WINRT-STRING-L1-1-0   
-- API-MS-WIN-POWER-BASE-L1-1-0   
-- API-MS-WIN-SHCORE-SCALING-L1-1-1   
-- msvproc   
