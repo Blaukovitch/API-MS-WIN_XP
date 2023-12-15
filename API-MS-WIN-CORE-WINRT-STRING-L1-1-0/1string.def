@@ -1,4 +1,16 @@
-LIBRARY scalling
+LIBRARY string
 EXPORTS
-GetDpiForMonitor @10
-SetProcessDpiAwareness  @92
+HSTRING_UserMarshal  @341
+HSTRING_UserMarshal64  @349
+RoOriginateErrorW @433
+WindowsDeleteString @462
+HSTRING_UserFree64 @345
+HSTRING_UserFree @340
+HSTRING_UserSize @342
+HSTRING_UserSize64 @344
+HSTRING_UserUnmarshal @343
+WindowsCreateString @460
+WindowsCreateStringReference @461
+WindowsCompareStringOrdinal
+WindowsIsStringEmpty
+WindowsGetStringLen

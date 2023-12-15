@@ -1,6 +1,6 @@
 ﻿//[80_PA] ELF, cracklab/exelab, 2023
 //FLAG 
-#define DEBUG_OUT 1
+//#define DEBUG_OUT 1
 
 //https://learn.microsoft.com/en-us/windows/win32/api/roerrorapi
 #define E_STRING_NOT_NULL_TERMINATED     _HRESULT_TYPEDEF_(0x80000017L)

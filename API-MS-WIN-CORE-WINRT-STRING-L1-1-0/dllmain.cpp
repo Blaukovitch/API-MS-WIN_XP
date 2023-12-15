@@ -1,11 +1,11 @@
 ﻿////[80_PA] ELF, cracklab/exelab, 2023
+#include "pch.h"
 #include <Rpc.h>
 #include <RpcNdr.h>
 
-
 #pragma comment(lib, "Rpcrt4.lib")
 //FLAG 
-#define DEBUG_OUT 1
+//#define DEBUG_OUT 1
 
 #define E_STRING_NOT_NULL_TERMINATED     _HRESULT_TYPEDEF_(0x80000017L)
 typedef struct HSTRING__ {
@@ -50,8 +50,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     return TRUE;
 }
 
-
-__declspec(dllexport) unsigned char* HSTRING_UserMarshal(
+extern "C"
+{
+__declspec(dllexport) unsigned char* APIENTRY _HSTRING_UserMarshal(
     unsigned long* unnamedParam1,
     unsigned char* unnamedParam2,
     HSTRING* unnamedParam3
@@ -69,11 +70,11 @@ __declspec(dllexport) unsigned char* HSTRING_UserMarshal(
 
     _NDR_USER_MARSHAL_INFO marshalInfo;
     memset(&marshalInfo, 0, sizeof(marshalInfo));
-    ::NdrGetUserMarshalInfo(pFlags, 1u, &marshalInfo);
+   // ::NdrGetUserMarshalInfo(pFlags, 1u, &marshalInfo);
 
 }
 
-__declspec(dllexport) unsigned char* HSTRING_UserMarshal64(
+__declspec(dllexport) unsigned char* APIENTRY _HSTRING_UserMarshal64(
     unsigned long* unnamedParam1,
     unsigned char* unnamedParam2,
     HSTRING* unnamedParam3
@@ -92,11 +93,11 @@ __declspec(dllexport) unsigned char* HSTRING_UserMarshal64(
 
     _NDR_USER_MARSHAL_INFO marshalInfo;
     memset(&marshalInfo, 0, sizeof(marshalInfo));
-    ::NdrGetUserMarshalInfo(pFlags, 1u, &marshalInfo);
+   // ::NdrGetUserMarshalInfo(pFlags, 1u, &marshalInfo);
 
 }
 
-__declspec(dllexport) BOOL RoOriginateErrorW(
+__declspec(dllexport) BOOL APIENTRY _RoOriginateErrorW(
     HRESULT error,
     UINT    cchMax,
     PCWSTR  message
@@ -111,7 +112,7 @@ __declspec(dllexport) BOOL RoOriginateErrorW(
     return TRUE;
 }
 
-__declspec(dllexport) HRESULT WindowsDeleteString(
+__declspec(dllexport) HRESULT APIENTRY _WindowsDeleteString(
     HSTRING string
 )
 {
@@ -120,7 +121,7 @@ __declspec(dllexport) HRESULT WindowsDeleteString(
     if (isdp)
         ::OutputDebugString(L"APIENTRY WindowsDeleteString()");
 #endif // DEBUG_OUT
-
+    return S_OK;
 
     HANDLE ProcessHeap; // rax
     volatile unsigned int va_int = (volatile unsigned __int32)((BYTE*)(string) + 6);
@@ -134,7 +135,7 @@ __declspec(dllexport) HRESULT WindowsDeleteString(
     return 0;
 }
 
-void __stdcall HSTRING_UserFree64(unsigned int* a1, HSTRING* a2)
+void __stdcall _HSTRING_UserFree64(unsigned int* a1, HSTRING* a2)
 {
 
 #ifdef DEBUG_OUT
@@ -161,7 +162,7 @@ void __stdcall HSTRING_UserFree64(unsigned int* a1, HSTRING* a2)
     }
 }
 
-__declspec(dllexport) void HSTRING_UserFree(
+__declspec(dllexport) void APIENTRY _HSTRING_UserFree(
     unsigned long* unnamedParam1,
     HSTRING* unnamedParam2
 )
@@ -174,11 +175,11 @@ __declspec(dllexport) void HSTRING_UserFree(
 
 
     if (unnamedParam2)
-        WindowsDeleteString(*unnamedParam2);
+        _WindowsDeleteString(*unnamedParam2);
 }
 
 
-__declspec(dllexport) unsigned int HSTRING_UserSize(unsigned int* a1, unsigned int a2, HSTRING* a3)
+__declspec(dllexport) unsigned int APIENTRY _HSTRING_UserSize(unsigned int* a1, unsigned int a2, HSTRING* a3)
 {
 #ifdef DEBUG_OUT
     //for OUTPUT DEBUG STRINGS (if needed)
@@ -192,7 +193,7 @@ __declspec(dllexport) unsigned int HSTRING_UserSize(unsigned int* a1, unsigned i
     unsigned int v6; // eax
     unsigned __int64 v7; // rax
     unsigned int v10; // ecx
-
+    /*
     v3 = 0;
     if (a3)
     {
@@ -219,11 +220,14 @@ __declspec(dllexport) unsigned int HSTRING_UserSize(unsigned int* a1, unsigned i
             }
         }
         RpcRaiseException(0x8007000E);
+        
     }
     return a2;
+    */
+    return S_OK;
 }
 
-__declspec(dllexport) unsigned int HSTRING_UserSize64(unsigned int* a1, unsigned int a2, HSTRING* a3)
+__declspec(dllexport) unsigned int APIENTRY _HSTRING_UserSize64(unsigned int* a1, unsigned int a2, HSTRING* a3)
 {
 #ifdef DEBUG_OUT
     //for OUTPUT DEBUG STRINGS (if needed)
@@ -237,13 +241,13 @@ __declspec(dllexport) unsigned int HSTRING_UserSize64(unsigned int* a1, unsigned
     if (!a3)
         return a2;
     v4 = a2 + (a2 & 7);
-    if (v4 < a2)
-        RpcRaiseException(0x8007000E);
-    return HSTRING_UserSize(a1, v4, a3);
+   // if (v4 < a2)
+     //   RpcRaiseException(0x8007000E);
+    return _HSTRING_UserSize(a1, v4, a3);
 }
 
 
-__declspec(dllexport) unsigned char* HSTRING_UserUnmarshal(
+__declspec(dllexport) unsigned char* APIENTRY _HSTRING_UserUnmarshal(
     unsigned long* unnamedParam1,
     unsigned char* unnamedParam2,
     HSTRING* unnamedParam3
@@ -263,10 +267,10 @@ __declspec(dllexport) unsigned char* HSTRING_UserUnmarshal(
 
     _NDR_USER_MARSHAL_INFO marshalInfo;
     memset(&marshalInfo, 0, sizeof(marshalInfo));
-    ::NdrGetUserMarshalInfo(pFlags, 1u, &marshalInfo);
+   // ::NdrGetUserMarshalInfo(pFlags, 1u, &marshalInfo);
 }
 
-__declspec(dllexport) HRESULT WindowsCreateString(PCNZWCH sourceString, UINT32 length, HSTRING* string)
+__declspec(dllexport) HRESULT APIENTRY _WindowsCreateString(PCNZWCH sourceString, UINT32 length, HSTRING* string)
 {
     unsigned __int16 v3; // r9
     __int64 v4; // r14
@@ -282,6 +286,15 @@ __declspec(dllexport) HRESULT WindowsCreateString(PCNZWCH sourceString, UINT32 l
     const wchar_t* v17; // r8
     unsigned int v18; // edx
 
+#ifdef DEBUG_OUT
+//for OUTPUT DEBUG STRINGS (if needed)
+    if (isdp)
+        ::OutputDebugString(L"APIENTRY WindowsCreateString()");
+#endif // DEBUG_OUT
+
+
+    return S_OK;
+    /*
     v4 = length;
     if (string)
     {
@@ -333,18 +346,20 @@ __declspec(dllexport) HRESULT WindowsCreateString(PCNZWCH sourceString, UINT32 l
     }
     RoOriginateErrorW(E_INVALIDARG, 6u, L"string");
     return E_INVALIDARG;
+    */
 }
 
-HRESULT __stdcall WindowsCreateStringReference(
+__declspec(dllexport) HRESULT APIENTRY _WindowsCreateStringReference(
     PCWSTR sourceString,
     UINT32 length,
     HSTRING_HEADER* hstringHeader,
     HSTRING* string)
 {
+    return S_OK;
     HRESULT v4; // ebp
     __int64 v5; // rbx
     HRESULT result; // eax
-    
+    /*
     v4 = 0;
     v5 = length;
     if (!string)
@@ -394,8 +409,51 @@ HRESULT __stdcall WindowsCreateStringReference(
             *(OWORD*)&hstringHeader->Reserved.Reserved1 = v10;
             *(QWORD*)&hstringHeader->Reserved.Reserved2[16] = sourceString;
             *string = (HSTRING)hstringHeader;
-            * */
+            
         }
     }
+ 
     return result;
+     */
+    return S_OK;
+}
+
+const WCHAR ret_string[] = L"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+__declspec(dllexport) PCWSTR APIENTRY _WindowsGetStringRawBuffer(
+    HSTRING string,
+    UINT32* length
+)
+{
+    *length = 1;
+    return ret_string;
+}
+
+__declspec(dllexport) HRESULT APIENTRY _WindowsCompareStringOrdinal(
+    HSTRING string1,
+    HSTRING string2,
+    INT32* result
+)
+{
+    if (result)
+    {
+        *result = 0;
+    }//end if (result)
+    return ERROR_BAD_FORMAT;
+}
+
+__declspec(dllexport) BOOL APIENTRY _WindowsIsStringEmpty(
+    HSTRING string
+)
+{
+    return TRUE;
+}
+
+__declspec(dllexport) UINT32 _WindowsGetStringLen(
+    HSTRING string
+)
+{
+    return NULL;
+}
+
 }
