@@ -1,5 +1,14 @@
 # API-MS-WIN_XP
-Microsoft API system libs Windows 11/10/8/ from Windows XP/7  
+## WARNING!
+First of all, it is necessary to have disassembling skills and knowledge of [**Microsoft Windows PE COFF executable file format**](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format). To edit .exe/.dll the import table (NT_IMPORT_TABLE) you will need tools like:
+* [**PETools**](https://github.com/petoolse/petools)
+* [CFFExlorer](https://ntcore.com/?page_id=388)
+* [x64dbg](https://github.com/x64dbg/x64dbg)
+	
+*As a minimal example, you should rewrite a typical KERNE32.DLL into your own implementation of Kernel64.dll*:
+![kernel64](PETools_CFF_IMPORT_TABLE.png "PETools and CFF Explorer VIII - NT_IMPORT_TABLE")
+
+### Microsoft API system libs Windows 11/10/8/ from Windows XP/7  
   
 - API-MS-WIN-CORE-HANDLE-L1-1-0
 - API-MS-WIN-CORE-LIBRARYLOADER-L1-2-0
