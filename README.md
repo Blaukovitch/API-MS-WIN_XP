@@ -4,9 +4,13 @@ First of all, it is necessary to have disassembling skills and knowledge of [**M
 * [**PETools**](https://github.com/petoolse/petools)
 * [CFFExlorer](https://ntcore.com/?page_id=388)
 * [x64dbg](https://github.com/x64dbg/x64dbg)
+* [Dependency Walker](https://www.dependencywalker.com/)
 	
 *As a minimal example, you should rewrite a typical KERNE32.DLL into your own implementation of Kernel64.dll*:
 ![kernel64](PETools_CFF_IMPORT_TABLE.png "PETools and CFF Explorer VIII - NT_IMPORT_TABLE")
+
+*Use Dependency Walker for determine absent WinAPIs in Windows 7 system (KERNE32.DLL, red **C** flag, GetProcessMitigationPolicy/PrefetchVirtualMemory/SetProcessMitigationPolicy/SetThreadInformation) :*
+![KERNEL32_WINAPI](DEPENDENCY_KERNEL32_WINDOWS7.PNG "Dependency Walker detected broken APIs (RED)")
 
 ### Microsoft API system libs Windows 11/10/8/ from Windows XP/7  
   
@@ -90,4 +94,5 @@ To solve the second problem, we need to assign a name different from the name of
 | xcryptprimitives | bcryptprimitives.dll | ProcessPrng |
 | Xfplat | Mfplat.dll | MFCreateDXGIDeviceManager, MFCreateDXGISurfaceBuffer,MFLockDXGIDeviceManager, MFUnlockDXGIDeviceManager |
 
-Nice hunt!  
+**Nice hunt!**
+ELF/80_PA
