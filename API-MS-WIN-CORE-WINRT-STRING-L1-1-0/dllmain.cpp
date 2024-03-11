@@ -449,11 +449,29 @@ __declspec(dllexport) BOOL APIENTRY _WindowsIsStringEmpty(
     return TRUE;
 }
 
-__declspec(dllexport) UINT32 _WindowsGetStringLen(
+__declspec(dllexport) UINT32 APIENTRY _WindowsGetStringLen(
     HSTRING string
 )
 {
     return NULL;
 }
+
+__declspec(dllexport) UINT32 APIENTRY _WindowsDuplicateString(
+    HSTRING string,
+    HSTRING* newString
+)
+{
+
+    return E_INVALIDARG;
+}
+
+__declspec(dllexport) HRESULT APIENTRY WindowsStringHasEmbeddedNull(
+    HSTRING string,
+    BOOL* hasEmbedNull
+)
+{
+    return E_INVALIDARG;
+}
+
 
 }
