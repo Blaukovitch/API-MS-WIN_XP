@@ -1,8 +1,20 @@
-//[80_PA] ELF, cracklab/exelab, 2023
-//FLAG  
+//[80_PA] ELF, cracklab/exelab, 2023-2024
+
+// >>>>>>>>>> FLAG (debug options) <<<<<<<<<<<
 //#define DEBUG_OUT 1
 //#define COMPATIBLE10_7_MODE 1
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+// >>>>>>>>>> FLAG (one of browser) <<<<<<<<<<<
+#define CHROME 1
 //#define EDGE 1
+//#define BRAVE 1
+//#define OPERA 1
+//#define MAIL 1
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+#define   EXPORT __declspec(dllexport) 
+#define EXPORT_END _exported
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -28,11 +40,27 @@ const char A_SPMP[] = "SetProcessMitigationPolicy";
 const char A_GPFN[] = "GetPackageFamilyName";
 const char A_NTQIT[] = "NtQueryInformationToken";
 
-#ifndef EDGE
+
+#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(MAIL)
 const char PRIMARY_EXE[] = "chrome.exe";
-#else
+#endif
+
+#ifdef BRAVE
+const char PRIMARY_EXE[] = "brave.exe";
+#endif // BRAVE
+
+#ifdef EDGE
 const char PRIMARY_EXE[] = "msedge.exe";
 #endif // EDGE
+
+#ifdef OPERA
+const char PRIMARY_EXE[] = "opera.exe";
+#endif //OPERA
+
+#ifdef MAIL
+const char PRIMARY_EXE[] = "ElectronMail.exe";
+#endif //OPERA
+
 const char PRIMARY_EXE_Is_SANDBOXED_SA[] = "IsSandboxedProcess";
 const char SERVICE_QUERY_ADVAPI32_DLL[] = "ADVAPI32.DLL";
 
@@ -46,9 +74,11 @@ const WCHAR WIDE_CH_SHARED_SECTION_NAME_TEMPLATE[] = L"CrSharedMem_%lx";
 
 
 extern "C" BOOL checkl_stop_option();
+extern "C" BOOL checkl_RENDER_opt();
 extern "C" void MPFLAT_preloader();
 extern "C" void DDRAW_FontCase_Service_SANDBOX_hook();
 extern "C" void WLDP_preloader_MSEDGE();
+extern "C" UINT Fill_fail_safe_CFMAPPING_Handle();
 
 pool_I advapi32_pp[] = {
     {"OpenServiceW", (size_t)hook_OpenServiceW},
@@ -59,6 +89,12 @@ pool_I advapi32_pp[] = {
     {0, 0}
 };
 
+#define MAX_TABLE_SAFE 5
+HANDLE hsafe_table[MAX_TABLE_SAFE];
+SIZE_T hsafe_table_COUNTER = 0;
+volatile size_t hfailed_safe_entrypoint = 0;
+CRITICAL_SECTION csec_fail_safe;
+
 // ----- ABSENT AP -----
 HMODULE pKernel32;
 HMODULE pNtdll;
@@ -66,6 +102,11 @@ HMODULE pMsvcrt;
 HMODULE pWLDP_MSEDGE = NULL;
 
 BOOL render_process = 0;
+
+typedef struct IMPORT_SWAP_POOL {
+    const char* name;
+    size_t VA_swap;
+}pool_I, * ppool_I;
 
 typedef DWORD(WINAPI api_DiscardVirtualMemory)(
     PVOID VirtualAddress,
@@ -160,6 +201,8 @@ BOOL DllMain( HMODULE hModule,
                        LPVOID lpReserved
                      )
 {
+    //checkl_stop_option();
+
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH: {
@@ -169,7 +212,7 @@ BOOL DllMain( HMODULE hModule,
         isdp = ::IsDebuggerPresent();
          checkl_stop_option();
 #endif // DEBUG_OUT
-         render_process = checkl_stop_option();
+         render_process = checkl_RENDER_opt();
       
         
         if (!pKernel32)
@@ -199,10 +242,12 @@ BOOL DllMain( HMODULE hModule,
             MPFLAT_preloader();
             //DirectX DRAW SANDBOX (Windows 7)
             DDRAW_FontCase_Service_SANDBOX_hook();
-#ifdef EDGE
+            //for PRINTER_PREVIEW HANDLE - SANDBOX
+            hsafe_table_COUNTER = Fill_fail_safe_CFMAPPING_Handle();
+//#ifdef EDGE
             //WLDP
             WLDP_preloader_MSEDGE();
-#endif // EDGE
+//#endif // EDGE
         }//end if (!pKernel32)
         break; }
     case DLL_THREAD_ATTACH:
@@ -216,11 +261,11 @@ BOOL DllMain( HMODULE hModule,
 
 //gpu || render
 //#define GPU_STOP 1
-BOOL checkl_stop_option()
+BOOL checkl_RENDER_opt()
 {
     //gpu process || renderer
     LPWSTR cmdline = ::GetCommandLine();
-    UINT i = wcslen(cmdline);
+    size_t i = wcslen(cmdline);
 
     //type=renderer
     while (i--)
@@ -243,6 +288,32 @@ BOOL checkl_stop_option()
    //     if (cmdline[0] == L't' && cmdline[1] == L'o' && cmdline[2] == L'r' && cmdline[3] == L'a' && cmdline[4] == L'g')
             {
           //  ::MessageBox(NULL, cmdline, NULL, MB_OK);
+            return TRUE;
+        }
+    }//end while (i--)
+    return FALSE;
+}
+
+
+BOOL checkl_stop_option()
+{
+    //gpu process || renderer
+    LPWSTR cmdline = ::GetCommandLine();
+    size_t i = wcslen(cmdline);
+
+    //type=renderer
+    while (i--)
+    {
+        //papi
+        if (*cmdline++ != L'p')
+            continue;
+
+        if (cmdline[0] == L'p' && cmdline[1] == L'a' && cmdline[2] == L'p' && cmdline[3] == L'i')
+
+        {
+            while (1)
+              ::MessageBox(NULL, cmdline, NULL, MB_OK);
+              
             return TRUE;
         }
     }//end while (i--)
@@ -285,7 +356,37 @@ extern "C"
                 // farproc_wsprintf_s(name_buffer, sizeof(name_buffer), WIDE_CH_SHARED_SECTION_NAME_TEMPLATE, randr(), randr(), randr(), randr());
                 lpName = name_buffer;
                 wsprintf(name_buffer, WIDE_CH_SHARED_SECTION_NAME_TEMPLATE, randr());
-            }
+                HANDLE reta = ::CreateFileMappingW(hFile,
+                    lpFileMappingAttributes,
+                    flProtect,
+                    dwMaximumSizeHigh,
+                    dwMaximumSizeLow,
+                    lpName);
+
+                //need use FAIL SAFE table?
+                if (FAILED(reta))
+                {
+
+                    //FAIL SAFE table is FILL?!
+                    if (hsafe_table_COUNTER)
+                    {
+                        ::EnterCriticalSection(&csec_fail_safe);
+                        if (hfailed_safe_entrypoint < MAX_TABLE_SAFE)
+                        {
+                            if (hsafe_table[hfailed_safe_entrypoint])
+                            {
+                                reta = hsafe_table[hfailed_safe_entrypoint];
+                                hsafe_table[hfailed_safe_entrypoint] = 0;
+                                hfailed_safe_entrypoint++;
+                                return reta;
+                            }//end if (hsafe_table[hfailed_safe_entrypoint])
+                        }//end  if (hfailed_safe_entrypoint < MAX_TABLE_SAFE)
+                        ::LeaveCriticalSection(&csec_fail_safe);
+                    }//end if (hsafe_table_COUNTER)
+                }//end if (FAILED(reta))
+
+                lpName = NULL;
+            }//end   if (!render_process)
         }//end if (!lpName)
         return ::CreateFileMappingW(hFile,
             lpFileMappingAttributes,
@@ -540,7 +641,7 @@ extern "C"
         else
             return farproc_GetProcessMitigationPolicy(hProcess, MitigationPolicy, lpBuffer, dwLength);
     }
-
+    
     //SetProcessMitigationPolicy
     /*
     Minimum supported client 	Windows 8 [desktop apps only]
@@ -632,7 +733,7 @@ extern "C"
         if (!farproc_Wow64GetThreadContext)
         {
             if (!lpContext)
-                return E_INVALIDARG;
+                return FALSE;
 
             //Windows 7
             LPCONTEXT pctx = 0;
@@ -704,8 +805,7 @@ extern "C"
 #endif // _AMD64_
 
                 //null extended
-                memset(lpContext->ExtendedRegisters, 0, sizeof(lpContext->ExtendedRegisters));
-
+                ::ZeroMemory(lpContext->ExtendedRegisters, sizeof(lpContext->ExtendedRegisters));
             }//end TRUE if(gth)
             else
             {
@@ -767,13 +867,14 @@ void ConvertProcessMitigationsToPolicy(MitigationFlags flags,
         }//end   if (Attribute == PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY)
 #endif // MY_DLL_WHQL_or_MICROSOFT_SIGNED
 
-        return ::UpdateProcThreadAttribute(lpAttributeList,
+         ::UpdateProcThreadAttribute(lpAttributeList,
             dwFlags,
             Attribute,
             lpValue,
             cbSize,
             lpPreviousValue,
             lpReturnSize);
+         return TRUE;
     }
 
 #define STATUS_BUFFER_TOO_SMALL 0xC0000023
@@ -843,7 +944,7 @@ Header 	appmodel.h
 Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
     */
-    EXPORT LONG _FindPackagesByPackageFamily(
+    EXPORT LONG WINAPI _FindPackagesByPackageFamily(
         PCWSTR packageFamilyName,
         UINT32 packageFilters,
         UINT32* count,
@@ -857,13 +958,35 @@ DLL 	Kernel32.dll
     }
 
 
-    EXPORT LONG _GetApplicationUserModelId(
+    EXPORT LONG WINAPI _GetApplicationUserModelId(
         HANDLE hProcess,
         UINT32* applicationUserModelIdLength,
         PWSTR  applicationUserModelId
     ) {
         return APPMODEL_ERROR_NO_APPLICATION;
     }
+
+    //edge 122
+    EXPORT LONG WINAPI _GetPackagesByPackageFamily(
+        PCWSTR packageFamilyName,
+        UINT32* count,
+        PWSTR* packageFullNames,
+        UINT32* bufferLength,
+        WCHAR* buffer
+    )
+    {
+        return APPMODEL_ERROR_NO_PACKAGE;
+    }
+
+    EXPORT LONG WINAPI _GetPackagePathByFullName(
+        PCWSTR packageFullName,
+        UINT32* pathLength,
+        PWSTR  path
+    )
+    {
+        return APPMODEL_ERROR_NO_PACKAGE;
+    }
+
     
 EXPORT BOOL WINAPI _IsGPU_Process(LPWSTR cmdline)
 {
@@ -891,8 +1014,12 @@ void MPFLAT_preloader()
     if (_IsGPU_Process(cmdline))
     {
         
-        UINT i = wcslen(cmdline);
+        size_t i = wcslen(cmdline);
+#ifdef MAIL
+        if (i > 16)
+#else
         if(i > 5)
+#endif
         {
             LPWSTR path_copy = (LPWSTR)::HeapAlloc(::GetProcessHeap(), HEAP_ZERO_MEMORY, (i * sizeof(WCHAR)) + 10);
 
@@ -921,16 +1048,21 @@ void MPFLAT_preloader()
 
                // ::MessageBoxW(NULL, path_copy, L"MPFLAT", MB_ICONERROR);
                 cmdline = &cmdline[last_div_i];
-                if(
-#ifndef EDGE
+                if (
 
-                   ((cmdline[0] == L'c') || (cmdline[0] == L'C'))&&
-                   ((cmdline[1] == L'h') || (cmdline[1] == L'H')) &&
-                   ((cmdline[2] == L'r') || (cmdline[2] == L'R'))&&
-                   ((cmdline[3] == L'o') || (cmdline[3] == L'O'))&&
-                   ((cmdline[4] == L'm') || (cmdline[4] == L'M'))&&
-                   ((cmdline[5] == L'e') || (cmdline[5] == L'E'))&&
-#else
+
+
+
+#ifdef CHROME
+
+                ((cmdline[0] == L'c') || (cmdline[0] == L'C')) &&
+                    ((cmdline[1] == L'h') || (cmdline[1] == L'H')) &&
+                    ((cmdline[2] == L'r') || (cmdline[2] == L'R')) &&
+                    ((cmdline[3] == L'o') || (cmdline[3] == L'O')) &&
+                    ((cmdline[4] == L'm') || (cmdline[4] == L'M')) &&
+                    ((cmdline[5] == L'e') || (cmdline[5] == L'E')) &&
+#endif
+#ifdef EDGE
                     ((cmdline[0] == L'm') || (cmdline[0] == L'M')) &&
                     ((cmdline[1] == L's') || (cmdline[1] == L'S')) &&
                     ((cmdline[2] == L'e') || (cmdline[2] == L'E')) &&
@@ -938,10 +1070,60 @@ void MPFLAT_preloader()
                     ((cmdline[4] == L'g') || (cmdline[4] == L'G')) &&
                     ((cmdline[5] == L'e') || (cmdline[5] == L'E')) &&
 #endif // EDGE
+
+#if  defined(EDGE) || defined(CHROME)
+
                    ((cmdline[6] == L'.'))&&
                    ((cmdline[7] == L'e') || (cmdline[7] == L'E'))&&
                    ((cmdline[8] == L'x') || (cmdline[8] == L'X'))&&
                    ((cmdline[9] == L'e') || (cmdline[9] == L'E'))
+#endif 
+
+#ifdef BRAVE
+
+                    ((cmdline[0] == L'b') || (cmdline[0] == L'B')) &&
+                    ((cmdline[1] == L'r') || (cmdline[1] == L'R')) &&
+                    ((cmdline[2] == L'a') || (cmdline[2] == L'A')) &&
+                    ((cmdline[3] == L'v') || (cmdline[3] == L'V')) &&
+                    ((cmdline[4] == L'e') || (cmdline[4] == L'E')) &&
+#endif
+#ifdef OPERA
+                    ((cmdline[0] == L'o') || (cmdline[0] == L'O')) &&
+                    ((cmdline[1] == L'p') || (cmdline[1] == L'P')) &&
+                    ((cmdline[2] == L'e') || (cmdline[2] == L'E')) &&
+                    ((cmdline[3] == L'r') || (cmdline[3] == L'R')) &&
+                    ((cmdline[4] == L'a') || (cmdline[4] == L'A')) &&
+#endif
+
+#ifdef MAIL
+                    ((cmdline[0] == L'e') || (cmdline[0] == L'E')) &&
+                    ((cmdline[1] == L'l') || (cmdline[1] == L'L')) &&
+                    ((cmdline[2] == L'e') || (cmdline[2] == L'E')) &&
+                    ((cmdline[3] == L'c') || (cmdline[3] == L'C')) &&
+                    ((cmdline[5] == L't') || (cmdline[5] == L'T')) &&
+                    ((cmdline[6] == L'r') || (cmdline[6] == L'R')) &&
+                    ((cmdline[7] == L'o') || (cmdline[7] == L'O')) &&
+                    ((cmdline[8] == L'n') || (cmdline[8] == L'N')) &&
+                    ((cmdline[9] == L'm') || (cmdline[9] == L'M')) &&
+                    ((cmdline[10] == L'a') || (cmdline[10] == L'A')) &&
+                    ((cmdline[11] == L'i') || (cmdline[11] == L'I')) &&
+                    ((cmdline[12] == L'l') || (cmdline[12] == L'L')) &&
+#endif
+
+#if  defined(BRAVE) || defined(OPERA)
+                    ((cmdline[5] == L'.')) &&
+                    ((cmdline[6] == L'e') || (cmdline[6] == L'E')) &&
+                    ((cmdline[7] == L'x') || (cmdline[7] == L'X')) &&
+                    ((cmdline[8] == L'e') || (cmdline[8] == L'E'))
+#endif
+
+#if  defined(MAIL)
+                    ((cmdline[13] == L'.')) &&
+                    ((cmdline[14] == L'e') || (cmdline[14] == L'E')) &&
+                    ((cmdline[15] == L'x') || (cmdline[15] == L'X')) &&
+                    ((cmdline[16] == L'e') || (cmdline[16] == L'E'))
+#endif
+
                     )
                     {
                     memcpy_s1(&path_copy[last_div_i], i * sizeof(WCHAR), WIDE_MPFLAT_386, sizeof(WIDE_MPFLAT_386));
@@ -971,7 +1153,7 @@ void WLDP_preloader_MSEDGE()
     if (pWLDP_MSEDGE)
         return;
 
-    SIZE_T i = ::GetModuleFileName(::GetModuleHandle(NULL), path, sizeof(path));
+    SIZE_T i = ::GetModuleFileName(::GetModuleHandle(NULL), path, MAX_PATH);
     if (i)
     {
         TCHAR* pCursor = &path[i];
@@ -1038,6 +1220,56 @@ void DDRAW_FontCase_Service_SANDBOX_hook()
         get_IMPORT_table_DLLNAME_props(SERVICE_QUERY_ADVAPI32_DLL, advapi32_pp, dwrite_module, import_first_thunk, st);
 
     }//end if(dwrite_module)
+}
+
+UINT Fill_fail_safe_CFMAPPING_Handle()
+{    
+    size_t i = MAX_TABLE_SAFE;
+
+    WCHAR name_buffer[MAX_PATH];      
+
+    HANDLE* hsafe_table_cursor = hsafe_table;
+    UINT SUCCESS_RET = 0;
+
+    if(!farproc_IsSandboxedProcess)
+        return 0;
+
+    if (!farproc_IsSandboxedProcess())
+        return 0;
+
+    while (i--)
+    {
+        ACL acl_0;
+        ::ZeroMemory(&acl_0, sizeof(acl_0));
+        if (::InitializeAcl(&acl_0, sizeof(ACL), 2))
+        {
+            SECURITY_DESCRIPTOR sd;
+            if (::InitializeSecurityDescriptor(&sd, 1))
+            {
+                if (::SetSecurityDescriptorDacl(&sd, TRUE, &acl_0, FALSE))
+                {
+                    SECURITY_ATTRIBUTES sa;
+                    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+                    sa.lpSecurityDescriptor = &sd;
+                    sa.bInheritHandle = FALSE;
+
+                    DWORD masxsize_hight = 0;
+
+                    wsprintf(name_buffer, WIDE_CH_SHARED_SECTION_NAME_TEMPLATE, randr());
+                    HANDLE answer = ::CreateFileMappingW((HANDLE)-1, &sa, PAGE_READWRITE, masxsize_hight, 0L, name_buffer);
+                    ::SwitchToThread();
+                    if (SUCCEEDED(answer))
+                    {
+                        *hsafe_table_cursor++ = answer;
+                        SUCCESS_RET++;
+                    }//end if (SUCCEEDED(answer))
+                }//end if (::SetSecurityDescriptorDacl(&sd, TRUE, &acl_0, FALSE))
+            }//end if (::InitializeSecurityDescriptor(&sd, 1))
+        }//end if (::InitializeAcl(&acl_0, sizeof(ACL), 2))
+    }//end while (i--)
+
+    ::InitializeCriticalSection(&csec_fail_safe);
+    return SUCCESS_RET;
 }
 
 ///////
@@ -1109,3 +1341,4 @@ if (win::GetVersion() < win::Version::WIN8_1) {
 
 
 */
+
