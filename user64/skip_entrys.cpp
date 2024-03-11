@@ -1,4 +1,4 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023
+﻿//[80_PA] ELF, cracklab/exelab, 2023-2024
 //FLAG
 
 //214
@@ -1665,13 +1665,13 @@ extern "C"
 	//electron mail
 
 	/*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows 7 [\F2\EE\EB\FC\EA\EE \EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2008 R2 [\F2\EE\EB\FC\EA\EE \EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winuser.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	User32.lib
+Минимальная версия клиента 	Windows 7 [только классические приложения]
+Минимальная версия сервера 	Windows Server 2008 R2 [только классические приложения]
+Целевая платформа 	Windows
+Header 	winuser.h (включая Windows.h)
+Библиотека 	User32.lib
 DLL 	User32.dll
-\CD\E0\E1\EE\F0 API 	ext-ms-win-ntuser-gui-l1-3-0 (\EF\EE\FF\E2\E8\EB\E0\F1\FC \E2 Windows 10 \E2\E5\F0\F1\E8\E8 10.0.10240)
+Набор API 	ext-ms-win-ntuser-gui-l1-3-0 (появилась в Windows 10 версии 10.0.10240)
 	*/
 	EXPORT DWORD WINAPI _ChangeWindowMessageFilterEx(HWND hwnd,                                         // Window
 		UINT message,                                      // WM_ message
@@ -1968,6 +1968,7 @@ DLL 	User32.dll
 	
 		
 	//EDGE 120.0.2210.77
+
 	EXPORT HWND WINAPI _FindWindowExA(HWND hWndParent,
 		HWND hWndChildAfter,
 		LPCSTR lpszClass,
@@ -1982,5 +1983,19 @@ DLL 	User32.dll
 	{
 		return  ::GetNextDlgTabItem(hDlg, hCtl, bPrevious);
 	}
+
+	EXPORT DWORD WINAPI _SetClassLongW(HWND hWnd,
+		int nIndex,
+		LONG dwNewLong)
+	{
+		return  ::SetClassLongW(hWnd, nIndex, dwNewLong);
+	}
+
+	EXPORT DWORD WINAPI _GetWindowRgnBox(HWND hWnd,
+		LPRECT lprc)
+	{
+		return  ::GetWindowRgnBox(hWnd, lprc);
+	}
+	
 	
 }
