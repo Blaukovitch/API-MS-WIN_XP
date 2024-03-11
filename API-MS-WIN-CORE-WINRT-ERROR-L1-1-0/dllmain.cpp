@@ -1,4 +1,7 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023
+﻿//[80_PA] ELF, cracklab/exelab, 2023-2024
+//FLAG 
+//#define DEBUG_OUT 1
+
 //FLAG 
 //#define DEBUG_OUT 1
 
@@ -25,114 +28,140 @@ typedef struct {}*RO_REGISTRATION_COOKIE;
 
 // ------ globals ------ 
 BOOL isdp = false;
-
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-                     )
+extern "C"
 {
-    switch (ul_reason_for_call)
+
+    BOOL APIENTRY DllMain(HMODULE hModule,
+        DWORD  ul_reason_for_call,
+        LPVOID lpReserved
+    )
     {
-    case DLL_PROCESS_ATTACH: {
+        switch (ul_reason_for_call)
+        {
+        case DLL_PROCESS_ATTACH: {
+#ifdef DEBUG_OUT
+            //for OUTPUT DEBUG STRINGS (if needed)
+            isdp = ::IsDebuggerPresent();
+#endif // DEBUG_OUT
+            break; }
+        case DLL_THREAD_ATTACH: {
+        case DLL_THREAD_DETACH:
+        case DLL_PROCESS_DETACH:
+            break; }
+        }
+        return TRUE;
+    }
+
+    __declspec(dllexport) BOOL RoOriginateError(
+        HRESULT error,
+        HSTRING message
+    )
+    {
 #ifdef DEBUG_OUT
         //for OUTPUT DEBUG STRINGS (if needed)
-        isdp = ::IsDebuggerPresent();
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY RoOriginateError()");
 #endif // DEBUG_OUT
-        break; }
-    case DLL_THREAD_ATTACH: {
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-        break; }
+        return TRUE;
     }
-    return TRUE;
-}
 
-__declspec(dllexport) BOOL RoOriginateError(
-    HRESULT error,
-    HSTRING message
-)
-{
+    __declspec(dllexport) BOOL APIENTRY RoTransformError(
+        HRESULT oldError,
+        HRESULT newError,
+        HSTRING message
+    )
+    {
 #ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY RoOriginateError()");
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY RoTransformError()");
 #endif // DEBUG_OUT
-    return TRUE;
-}
+        return FALSE;
+    }
 
-__declspec(dllexport) BOOL RoTransformError(
-    HRESULT oldError,
-    HRESULT newError,
-    HSTRING message
-)
-{
+    __declspec(dllexport) BOOL APIENTRY RoOriginateErrorW(
+        HRESULT error,
+        UINT    cchMax,
+        PCWSTR  message
+    )
+    {
 #ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY RoTransformError()");
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY RoOriginateErrorW()");
 #endif // DEBUG_OUT
-    return FALSE;
-}
+        return TRUE;
 
-__declspec(dllexport) BOOL RoOriginateErrorW(
-    HRESULT error,
-    UINT    cchMax,
-    PCWSTR  message
-)
-{
+    }
+
+    __declspec(dllexport) void APIENTRY RoClearError()
+    {
 #ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY RoOriginateErrorW()");
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY RoClearError()");
 #endif // DEBUG_OUT
-    return TRUE;
+        return;
+    }
 
-}
-
-__declspec(dllexport) void RoClearError()
-{
+    __declspec(dllexport) BOOL APIENTRY IsErrorPropagationEnabled()
+    {
 #ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY RoClearError()");
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY IsErrorPropagationEnabled()");
 #endif // DEBUG_OUT
-    return;
-}
 
-__declspec(dllexport) BOOL IsErrorPropagationEnabled()
-{
-#ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY IsErrorPropagationEnabled()");
-#endif // DEBUG_OUT
-  
-    /*
-    Remarks
-For Windows 8 apps, this value is FALSE, and errors returned by a delegate registered as a callback function for the asynchronous completion of a Windows Runtime API or for a Windows Runtime API event are ignored. For Windows 8.1 and Windows 10 apps, this value is TRUE, and errors from callback functions that return control to operating system code are propagated to the global error handler.
-Use this function only when your code needs to interoperate with both Windows 8 and newer applications by using the same binary.
-    */
-    return TRUE;
-}
+        /*
+        Remarks
+    For Windows 8 apps, this value is FALSE, and errors returned by a delegate registered as a callback function for the asynchronous completion of a Windows Runtime API or for a Windows Runtime API event are ignored. For Windows 8.1 and Windows 10 apps, this value is TRUE, and errors from callback functions that return control to operating system code are propagated to the global error handler.
+    Use this function only when your code needs to interoperate with both Windows 8 and newer applications by using the same binary.
+        */
+        return TRUE;
+    }
 
-__declspec(dllexport) HRESULT RoCaptureErrorContext(
-    HRESULT hr)
-{
+    __declspec(dllexport) HRESULT APIENTRY RoCaptureErrorContext(
+        HRESULT hr)
+    {
 #ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY RoCaptureErrorContext()");
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY RoCaptureErrorContext()");
 #endif // DEBUG_OUT
-    return hr;
-}
+        return hr;
+    }
 
-__declspec(dllexport) void RoFailFastWithErrorContext(
-    HRESULT hrError)
-{
+    __declspec(dllexport) void APIENTRY RoFailFastWithErrorContext(
+        HRESULT hrError)
+    {
 #ifdef DEBUG_OUT
-    //for OUTPUT DEBUG STRINGS (if needed)
-    if (isdp)
-        ::OutputDebugString(L"APIENTRY RoFailFastWithErrorContext()");
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY RoFailFastWithErrorContext()");
 #endif // DEBUG_OUT
-    return;
+        return;
+    }
+
+    __declspec(dllexport) HRESULT APIENTRY SetRestrictedErrorInfo(
+        IRestrictedErrorInfo* pRestrictedErrorInfo)
+    {
+#ifdef DEBUG_OUT
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY SetRestrictedErrorInfo()");
+#endif // DEBUG_OUT
+        return S_OK;
+    }
+
+    __declspec(dllexport) HRESULT APIENTRY GetRestrictedErrorInfo(
+        IRestrictedErrorInfo** ppRestrictedErrorInfo)
+    {
+#ifdef DEBUG_OUT
+        //for OUTPUT DEBUG STRINGS (if needed)
+        if (isdp)
+            ::OutputDebugString(L"APIENTRY GetRestrictedErrorInfo()");
+#endif // DEBUG_OUT
+        return CO_E_NOT_SUPPORTED;
+    }
+
 }
