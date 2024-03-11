@@ -1,7 +1,5 @@
 //[80_PA] ELF, cracklab/exelab, 2023
 //FLAG 
-#include "native.h"
-
 extern "C" void* memcpy1(void* dest, const void* src, size_t len);
 
 extern "C" void* zeroset1(void* dest, size_t len);
@@ -40,9 +38,8 @@ __inline errno_t __CRTDECL memcpy_s1(
     _CRT_MEMCPY_S_VALIDATE_RETURN_ERRCODEx(_Destination != NULL, EINVAL);
     if (_Source == NULL || _DestinationSize < _SourceSize)
     {
-       zeroset1(_Destination, _DestinationSize);
-       // memset(_Destination, 0, _DestinationSize);
-
+       ::ZeroMemory(_Destination, _DestinationSize);
+   
         _CRT_MEMCPY_S_VALIDATE_RETURN_ERRCODEx(_Source != NULL, EINVAL);
         _CRT_MEMCPY_S_VALIDATE_RETURN_ERRCODEx(_DestinationSize >= _SourceSize, ERANGE);
 
@@ -73,6 +70,8 @@ void* __cdecl memset(void* pTarget, int value, size_t cbTarget) {
     return pTarget;
 }
 
+//#pragma optimize("", on)
+//#pragma optimize("", on)
 
 size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
    
@@ -106,6 +105,7 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
     return dest;
 }
 
+ 
 #pragma intrinsic(wcslen)
  size_t
      wcslen(const wchar_t* s)
@@ -118,7 +118,7 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
 
      return p - s;
  }
-
+ 
 #define INT_DIGITS 17
 //#pragma intrinsic(ltow)
  wchar_t* l_to_w(unsigned long i, wchar_t* dsd)
@@ -145,7 +145,6 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
 
  }
 
-//:)
  LONG randr()
  {
      
@@ -179,12 +178,16 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
              {
                  *pSize = Hnt64->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size;
                  SectionRVA = Hnt64->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+              //   first_section_offset = FIELD_OFFSET(IMAGE_NT_HEADERS32, OptionalHeader) + Hnt32->FileHeader.SizeOfOptionalHeader;
+              //   NumOfSec = Hnt32->FileHeader.NumberOfSections;
                  break;
              }//end case IMAGE_NT_OPTIONAL_HDR32_MAGIC:
              case IMAGE_NT_OPTIONAL_HDR64_MAGIC:
              {
                  *pSize = Hnt64->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size;
                  SectionRVA = Hnt64->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+            //     first_section_offset = FIELD_OFFSET(IMAGE_NT_HEADERS64, OptionalHeader) + Hnt64->FileHeader.SizeOfOptionalHeader;
+            //     NumOfSec = Hnt64->FileHeader.NumberOfSections;
                  break;
              }
              }//end switch (Hnt64.OptionalHeader.Magic)
@@ -277,5 +280,4 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
 
      return NULL;
  }
-
  
