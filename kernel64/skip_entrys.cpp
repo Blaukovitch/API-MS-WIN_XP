@@ -1,6 +1,8 @@
 //[80_PA] ELF, cracklab/exelab, 2023
 //FLAG 
 
+
+
 //379
 extern "C"
 {
@@ -1264,9 +1266,24 @@ EXPORT BOOL WINAPI _GetThreadTimes(HANDLE hThread,
         lpUserTime);
 }
 
+#ifdef _AMD64_
 EXPORT DWORD WINAPI _GetTickCount(VOID) {
     return ::GetTickCount();
 }
+
+EXPORT ULONGLONG _GetTickCount64(VOID) {
+    return ::GetTickCount64();
+}
+#else
+EXPORT DWORD __GetTickCount64(VOID) {
+    return ::GetTickCount64();
+}
+
+EXPORT ULONGLONG __GetTickCount(VOID) {
+    return ::GetTickCount();
+}
+#endif // _AMD64_
+
 
 EXPORT int WINAPI _GetTimeFormatEx(LPCWSTR lpLocaleName,
     DWORD dwFlags,
@@ -2149,7 +2166,7 @@ EXPORT VOID WINAPI _RtlUnwindEx(PVOID TargetFrame,
         HistoryTable);
 }
 
-EXPORT PEXCEPTION_ROUTINE WINAPI _RtlVirtualUnwind(DWORD64 HandlerType,
+EXPORT PEXCEPTION_ROUTINE WINAPI _RtlVirtualUnwind(DWORD HandlerType,
     DWORD64 ImageBase,
     DWORD64 ControlPc,
     PRUNTIME_FUNCTION FunctionEntry,
@@ -2733,11 +2750,11 @@ EXPORT int WINAPI _lstrlenA(LPCSTR lpString) {
 ///////////////
 
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows Vista [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winbase.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	winbase.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT BOOL WINAPI _ConvertFiberToThread()
@@ -2747,11 +2764,11 @@ EXPORT BOOL WINAPI _ConvertFiberToThread()
 
 
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows Vista [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winbase.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	winbase.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT LPVOID WINAPI _ConvertThreadToFiberEx(
@@ -2763,11 +2780,11 @@ EXPORT LPVOID WINAPI _ConvertThreadToFiberEx(
 }
 
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows Vista [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winbase.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	winbase.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT LPVOID WINAPI _CreateFiber(SIZE_T dwStackSize,
@@ -2779,11 +2796,11 @@ EXPORT LPVOID WINAPI _CreateFiber(SIZE_T dwStackSize,
 }
 
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows Vista [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winbase.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	winbase.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT LPVOID WINAPI _CreateFiberEx(SIZE_T dwStackCommitSize,
@@ -2797,11 +2814,11 @@ EXPORT LPVOID WINAPI _CreateFiberEx(SIZE_T dwStackCommitSize,
 }
 
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows Vista [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winbase.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	winbase.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT VOID WINAPI _DeleteFiber(LPVOID lpFiber)
@@ -2811,11 +2828,11 @@ EXPORT VOID WINAPI _DeleteFiber(LPVOID lpFiber)
 
 
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows Vista [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	winbase.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	winbase.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT VOID WINAPI _SwitchToFiber(LPVOID lpFiber)
@@ -2909,11 +2926,11 @@ EXPORT HRESULT WINAPI _WerRegisterRuntimeExceptionModule(PCWSTR pwszOutOfProcess
 /*/chrome.dll ++*/
 //CreateWaitableTimerW
 /*
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \EA\EB\E8\E5\ED\F2\E0 	Windows XP [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\CC\E8\ED\E8\EC\E0\EB\FC\ED\E0\FF \E2\E5\F0\F1\E8\FF \F1\E5\F0\E2\E5\F0\E0 	Windows Server 2003 [\EA\EB\E0\F1\F1\E8\F7\E5\F1\EA\E8\E5 \EF\F0\E8\EB\EE\E6\E5\ED\E8\FF | \CF\F0\E8\EB\EE\E6\E5\ED\E8\FF UWP]
-\D6\E5\EB\E5\E2\E0\FF \EF\EB\E0\F2\F4\EE\F0\EC\E0 	Windows
-Header 	synchapi.h (\E2\EA\EB\FE\F7\E0\FF Windows.h)
-\C1\E8\E1\EB\E8\EE\F2\E5\EA\E0 	Kernel32.lib
+Минимальная версия клиента 	Windows XP [классические приложения | Приложения UWP]
+Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
+Целевая платформа 	Windows
+Header 	synchapi.h (включая Windows.h)
+Библиотека 	Kernel32.lib
 DLL 	Kernel32.dll
 */
 EXPORT HANDLE WINAPI _CreateWaitableTimerW(
@@ -3097,6 +3114,7 @@ EXPORT BOOL WINAPI _GetNumberOfConsoleInputEvents(HANDLE hConsoleInput,
     return ::GetNumberOfConsoleInputEvents(hConsoleInput, lpNumberOfEvents);
 }
 
+
 //FIX EXPORT TABLE
 #ifdef _AMD64_
 EXPORT BOOL _GetProcessIoCounters(
@@ -3106,9 +3124,6 @@ EXPORT BOOL _GetProcessIoCounters(
     return ::GetProcessIoCounters(hProcess, lpIoCounters);
  }
 
-    EXPORT ULONGLONG _GetTickCount64(VOID) {
-        return ::GetTickCount64();
-    }
 
     EXPORT HANDLE _OpenFileMappingW(DWORD dwDesiredAccess,
         BOOL bInheritHandle,
@@ -3733,6 +3748,85 @@ EXPORT HANDLE WINAPI _OpenEventA(DWORD dwDesiredAccess,
         lpName);
 }
 
+//brave 
+
+//IMPORT TABLE BUG??????????????
+#ifndef _AMD64_
+EXPORT BOOL WINAPI __SetThreadStackGuarantee(PULONG StackSizeInBytes)
+{
+    return ::SetThreadStackGuarantee(StackSizeInBytes);
+}
+
+EXPORT BOOL __WritePrivateProfileStringW(LPCWSTR lpAppName,
+    LPCWSTR lpKeyName,
+    LPCWSTR lpString,
+    LPCWSTR lpFileName)
+{
+    return ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
+}
+
+EXPORT BOOL WINAPI __K32GetModuleFileNameExA(HANDLE hProcess,
+    HMODULE hModule,
+    LPSTR lpFilename,
+    DWORD nSize)
+{
+    return ::K32GetModuleFileNameExA(hProcess, hModule, lpFilename, nSize);
+}
+
+EXPORT BOOL WINAPI __K32GetModuleBaseNameW(HANDLE hProcess,
+    HMODULE hModule,
+    LPWSTR lpBaseName,
+    DWORD nSize)
+{
+    return ::K32GetModuleBaseNameW(hProcess, hModule, lpBaseName, nSize);
+}
+
+EXPORT BOOL WINAPI _DisableThreadLibraryCalls(HMODULE hLibModule)
+{
+    return  ::DisableThreadLibraryCalls(hLibModule);
+}
+
+#else
+EXPORT BOOL WINAPI _SetThreadStackGuarantee(PULONG StackSizeInBytes)
+{
+    return ::SetThreadStackGuarantee(StackSizeInBytes);
+}
+
+EXPORT BOOL WINAPI _WritePrivateProfileStringW(LPCWSTR lpAppName,
+    LPCWSTR lpKeyName,
+    LPCWSTR lpString,
+    LPCWSTR lpFileName)
+{
+    return ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
+}
+
+EXPORT BOOL WINAPI _K32GetModuleFileNameExA(HANDLE hProcess,
+    HMODULE hModule,
+    LPSTR lpFilename,
+    DWORD nSize)
+{
+    return ::K32GetModuleFileNameExA(hProcess, hModule, lpFilename, nSize);
+}
+
+EXPORT BOOL WINAPI _K32GetModuleBaseNameW(HANDLE hProcess,
+    HMODULE hModule,
+    LPWSTR lpBaseName,
+    DWORD nSize)
+{
+    return ::K32GetModuleBaseNameW(hProcess, hModule, lpBaseName, nSize);
+}
+
+EXPORT BOOL WINAPI _DisableThreadLibraryCalls(HMODULE hLibModule)
+{
+    return  ::DisableThreadLibraryCalls(hLibModule);
+}
+#endif // __AMD64
+//opera_GX
+
+EXPORT BOOL WINAPI _SetProcessAffinityMask(HANDLE hProcess,
+    DWORD_PTR dwProcessAffinityMask) {
+    return ::SetProcessAffinityMask(hProcess, dwProcessAffinityMask);
+}
 
 ///////
 
