@@ -1,5 +1,5 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023
-//FLAG
+﻿//[80_PA] ELF, cracklab/exelab, 2023-2024
+//FLAG 
 //#define DEBUG_OUT 1
 
 
@@ -18,8 +18,9 @@ const char A_POWRURSRN[] = "PowerUnregisterSuspendResumeNotification";
 const char A_GDPIFW[] = "GetDpiForWindow";
 const char A_PTLPPMDPI[] = "PhysicalToLogicalPointForPerMonitorDPI";
 const char A_GPITR[] = "GetPointerInputTransform";
-
-
+const char A_GPD[] = "GetPointerDevice";
+const char A_GPDS[] = "GetPointerDevices";
+const char A_RPDN[] = "RegisterPointerDeviceNotifications";
 #pragma code_seg(pop)
 
 //https://stackoverflow.com/questions/66161063/c-windows-api-how-to-retrieve-font-scaling-percentage-on-windows-10
@@ -58,6 +59,11 @@ typedef BOOL(WINAPI api_GetPointerInputTransform)(UINT32          pointerId,
     UINT32          historyCount,
     INPUT_TRANSFORM* inputTransform);
 
+typedef BOOL(WINAPI api_GetPointerDevice)(HANDLE device, POINTER_DEVICE_INFO* pointerDevice);
+typedef BOOL(WINAPI api_GetPointerDevices)(UINT32* deviceCount, POINTER_DEVICE_INFO* pointerDevices);
+
+typedef BOOL(WINAPI api_RegisterPointerDeviceNotifications)(HWND window, BOOL notifyRange);
+
 api_GetPointerPenInfo* farproc_GetPointerPenInfo = 0;
 api_GetPointerType* farproc_GetPointerType = 0;
 api_RegisterSuspendResumeNotification* farproc_RegisterSuspendResumeNotification = 0;
@@ -67,6 +73,9 @@ api_PowerUnregisterSuspendResumeNotification* farproc_PowerUnregisterSuspendResu
 api_GetDpiForWindow* farproc_GetDpiForWindow = 0;
 api_PhysicalToLogicalPointForPerMonitorDPI* farproc_PhysicalToLogicalPointForPerMonitorDPI = 0;
 api_GetPointerInputTransform* farproc_GetPointerInputTransform = 0;
+api_GetPointerDevice* farproc_GetPointerDevice = 0;
+api_GetPointerDevices* farproc_GetPointerDevices = 0;
+api_RegisterPointerDeviceNotifications* farproc_RegisterPointerDeviceNotifications = 0;
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -97,6 +106,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                 farproc_GetDpiForWindow = (api_GetDpiForWindow*)::GetProcAddress(pUser32, A_GDPIFW);
                 farproc_PhysicalToLogicalPointForPerMonitorDPI = (api_PhysicalToLogicalPointForPerMonitorDPI*)::GetProcAddress(pUser32, A_PTLPPMDPI);
                 farproc_GetPointerInputTransform = (api_GetPointerInputTransform*)::GetProcAddress(pUser32, A_GPITR);
+                farproc_GetPointerDevice = (api_GetPointerDevice*)::GetProcAddress(pUser32, A_GPD);
+                farproc_GetPointerDevices = (api_GetPointerDevices*)::GetProcAddress(pUser32, A_GPDS);
+                farproc_RegisterPointerDeviceNotifications = (api_RegisterPointerDeviceNotifications*)::GetProcAddress(pUser32, A_RPDN);
 
                 farproc_PowerRegisterSuspendResumeNotification = (api_PowerRegisterSuspendResumeNotification*)::GetProcAddress(pPPow, A_POWRRSRN);
                 farproc_PowerUnregisterSuspendResumeNotification = (api_PowerUnregisterSuspendResumeNotification*)::GetProcAddress(pPPow, A_POWRURSRN);
@@ -359,4 +371,88 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
         return farproc_GetPointerInputTransform(pointerId, historyCount, inputTransform);
     }
 
+
+    EXPORT BOOL WINAPI _GetPointerDevice(HANDLE  device, POINTER_DEVICE_INFO* pointerDevice)
+    {
+#ifdef DEBUG_OUT
+        if (isdp)
+        {
+            WCHAR Buffer[1024];
+            wsprintf(Buffer, L"[%i] - farproc_GetPointerDevice()", ::GetCurrentThreadId());
+            ::OutputDebugString(Buffer);
+        }//end if (isdp)
+#endif // DEBUG_OUT
+        
+        if (!farproc_GetPointerDevice)
+        {
+            //Windows 7
+            if (!device)
+            {
+                ::SetLastError(ERROR_INVALID_PARAMETER);
+                return FALSE;
+            }//end if (!hwnd)
+
+            //no transform
+            //inputTransform->m;
+            ::SetLastError(ERROR_SYSTEM_DEVICE_NOT_FOUND);
+            return FALSE;
+        }//end if (!farproc_DiscardVirtualMemory)
+        return farproc_GetPointerDevice(device, pointerDevice);
+    }
+
+    EXPORT BOOL WINAPI _GetPointerDevices(UINT32* deviceCount, POINTER_DEVICE_INFO* pointerDevices)
+    {
+#ifdef DEBUG_OUT
+        if (isdp)
+        {
+            WCHAR Buffer[1024];
+            wsprintf(Buffer, L"[%i] - farproc_GetPointerDevices()", ::GetCurrentThreadId());
+            ::OutputDebugString(Buffer);
+        }//end if (isdp)
+#endif // DEBUG_OUT
+
+        if (!farproc_GetPointerDevices)
+        {
+            //Windows 7
+            if (!deviceCount)
+            {
+                ::SetLastError(ERROR_INVALID_PARAMETER);
+                return FALSE;
+            }//end if (!hwnd)
+
+            //no transform
+            //inputTransform->m;
+            ::SetLastError(ERROR_SYSTEM_DEVICE_NOT_FOUND);
+            return FALSE;
+        }//end if (!farproc_DiscardVirtualMemory)
+        return farproc_GetPointerDevices(deviceCount, pointerDevices);
+    }
+
+    EXPORT BOOL WINAPI _RegisterPointerDeviceNotifications(HWND window, BOOL notifyRange)
+    {
+#ifdef DEBUG_OUT
+        if (isdp)
+        {
+            WCHAR Buffer[1024];
+            wsprintf(Buffer, L"[%i] - farproc_RegisterPointerDeviceNotifications()", ::GetCurrentThreadId());
+            ::OutputDebugString(Buffer);
+        }//end if (isdp)
+#endif // DEBUG_OUT
+
+        if (!farproc_RegisterPointerDeviceNotifications)
+        {
+            //Windows 7
+            if (!window)
+            {
+                ::SetLastError(ERROR_INVALID_PARAMETER);
+                return FALSE;
+            }//end if (!hwnd)
+
+            //no transform
+            //inputTransform->m;
+            ::SetLastError(ERROR_SUCCESS);
+            return TRUE;
+        }//end if (!farproc_DiscardVirtualMemory)
+        return farproc_RegisterPointerDeviceNotifications(window, notifyRange);
+    }
 }
