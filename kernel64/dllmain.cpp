@@ -3,18 +3,15 @@
 // >>>>>>>>>> FLAG (debug options) <<<<<<<<<<<
 //#define DEBUG_OUT 1
 //#define COMPATIBLE10_7_MODE 1
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 // >>>>>>>>>> FLAG (one of browser) <<<<<<<<<<<
 #define CHROME 1
 //#define EDGE 1
 //#define BRAVE 1
 //#define OPERA 1
+//#define VIVALDI 1
 //#define MAIL 1
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-#define   EXPORT __declspec(dllexport) 
-#define EXPORT_END _exported
+//#define SPOOTIFY 1
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -41,7 +38,7 @@ const char A_GPFN[] = "GetPackageFamilyName";
 const char A_NTQIT[] = "NtQueryInformationToken";
 
 
-#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(MAIL)
+#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY)
 const char PRIMARY_EXE[] = "chrome.exe";
 #endif
 
@@ -57,9 +54,19 @@ const char PRIMARY_EXE[] = "msedge.exe";
 const char PRIMARY_EXE[] = "opera.exe";
 #endif //OPERA
 
+#ifdef VIVALDI
+const char PRIMARY_EXE[] = "vivaldi.exe";
+#endif //VIVALDI
+
 #ifdef MAIL
 const char PRIMARY_EXE[] = "ElectronMail.exe";
-#endif //OPERA
+#endif //MAIL
+
+#ifdef SPOOTIFY
+const char PRIMARY_EXE[] = "Spotify.exe";
+#endif //SPOOTIFY
+
+
 
 const char PRIMARY_EXE_Is_SANDBOXED_SA[] = "IsSandboxedProcess";
 const char SERVICE_QUERY_ADVAPI32_DLL[] = "ADVAPI32.DLL";
@@ -102,11 +109,6 @@ HMODULE pMsvcrt;
 HMODULE pWLDP_MSEDGE = NULL;
 
 BOOL render_process = 0;
-
-typedef struct IMPORT_SWAP_POOL {
-    const char* name;
-    size_t VA_swap;
-}pool_I, * ppool_I;
 
 typedef DWORD(WINAPI api_DiscardVirtualMemory)(
     PVOID VirtualAddress,
@@ -508,15 +510,15 @@ extern "C"
             {
             case ThreadMemoryPriority:
             {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessSessionInformation, pThreadInformation, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ProcessSessionInformation, pThreadInformation, ThreadInformationSize);
             }//end case ThreadMemoryPriority
             case ThreadAbsoluteCpuPriority:
             {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessForegroundInformation, pThreadInformation, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ProcessForegroundInformation, pThreadInformation, ThreadInformationSize);
             }//end  case ThreadAbsoluteCpuPriority:
             case ThreadDynamicCodePolicy:
             {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessWorkingSetWatchEx, pThreadInformation, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ProcessWorkingSetWatchEx, pThreadInformation, ThreadInformationSize);
             }//end  case ThreadDynamicCodePolicy:
 
             case ThreadInformationClassMax:
@@ -536,7 +538,7 @@ extern "C"
 
                 THREAD_POWER_THROTTLING_STATE thread_info = { 1, pThreadInformation->ControlMask, pThreadInformation->StateMask };
 
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)(0x31 | 0x20), &thread_info, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)(0x31 | 0x20), &thread_info, ThreadInformationSize);
 
             }//end  case ThreadDynamicCodePolicy:
 
@@ -987,6 +989,58 @@ DLL 	Kernel32.dll
         return APPMODEL_ERROR_NO_PACKAGE;
     }
 
+
+    EXPORT HRESULT WINAPI _SetThreadDescription(
+        HANDLE hThread,
+        PCWSTR lpThreadDescription
+    ) {
+        if (!hThread)
+        {
+            ::SetLastError(E_INVALIDARG);
+            return E_INVALIDARG;
+        }//end if (!hThread)
+
+        if(!farproc_NtSetInformationThread)
+            return  ERROR_SUCCESS;
+
+        UNICODE_STRING WideThreadDescription = {0,0,0};
+        ::RtlInitUnicodeString(&WideThreadDescription, lpThreadDescription);
+        
+        farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ThreadNameInformation, &WideThreadDescription, sizeof(UNICODE_STRING));
+
+        return ERROR_SUCCESS;
+    }
+
+#ifdef SPOOTIFY
+    //fix spooty kernel32.dll > redirected to > user32.dll
+    EXPORT int WINAPI _LoadStringW(HINSTANCE hInstance,
+        UINT      uID,
+        LPWSTR    lpBuffer,
+        int       cchBufferMax) {
+        return ::LoadStringW(hInstance, uID, lpBuffer, cchBufferMax);
+    }
+#endif
+
+#ifdef SPOOTIFY
+#include <shellapi.h>
+    //fix LINK open miss - Windows 7 (Spotify LOGON ERROR!!!)
+    EXPORT int WINAPI _ELFSL7(const char* AString) {
+
+        ::ShellExecuteA(NULL, "open", AString, NULL, NULL, SW_SHOWNORMAL);
+        /*
+        LPBC pShellContext = 0;
+        ::CreateBindCtx(NULL, &pShellContext);
+        IShellItem* pIshell;
+        HRESULT reta = ::SHCreateItemFromParsingName(WideString, pShellContext, IID_IShellItem, (void**)&pIshell);
+        if (reta)
+            return 1;
+        
+        pIshell->BindToHandler()
+        */
+       return 0;
+    }
+#endif
+
     
 EXPORT BOOL WINAPI _IsGPU_Process(LPWSTR cmdline)
 {
@@ -1013,7 +1067,7 @@ void MPFLAT_preloader()
     LPWSTR cmdline = ::GetCommandLine();
     if (_IsGPU_Process(cmdline))
     {
-        
+     //   ::MessageBox(NULL, L"AAAAAAAAAAAAA", L"GPU", MB_OK);
         size_t i = wcslen(cmdline);
 #ifdef MAIL
         if (i > 16)
@@ -1095,6 +1149,16 @@ void MPFLAT_preloader()
                     ((cmdline[4] == L'a') || (cmdline[4] == L'A')) &&
 #endif
 
+#ifdef VIVALDI
+                    ((cmdline[0] == L'v') || (cmdline[0] == L'V')) &&
+                    ((cmdline[1] == L'i') || (cmdline[1] == L'I')) &&
+                    ((cmdline[2] == L'v') || (cmdline[2] == L'V')) &&
+                    ((cmdline[3] == L'a') || (cmdline[3] == L'A')) &&
+                    ((cmdline[4] == L'l') || (cmdline[4] == L'L')) &&
+                    ((cmdline[5] == L'd') || (cmdline[5] == L'D')) &&
+                    ((cmdline[6] == L'i') || (cmdline[6] == L'I')) &&
+#endif
+
 #ifdef MAIL
                     ((cmdline[0] == L'e') || (cmdline[0] == L'E')) &&
                     ((cmdline[1] == L'l') || (cmdline[1] == L'L')) &&
@@ -1110,6 +1174,17 @@ void MPFLAT_preloader()
                     ((cmdline[12] == L'l') || (cmdline[12] == L'L')) &&
 #endif
 
+                    //Spotify.exe
+#ifdef SPOOTIFY
+                    ((cmdline[0] == L's') || (cmdline[0] == L'S')) &&
+                    ((cmdline[1] == L'p') || (cmdline[1] == L'P')) &&
+                    ((cmdline[2] == L'o') || (cmdline[2] == L'O')) &&
+                    ((cmdline[3] == L't') || (cmdline[3] == L'T')) &&
+                    ((cmdline[5] == L'i') || (cmdline[5] == L'I')) &&
+                    ((cmdline[6] == L'f') || (cmdline[6] == L'F')) &&
+                    ((cmdline[7] == L'y') || (cmdline[7] == L'Y')) &&
+#endif
+
 #if  defined(BRAVE) || defined(OPERA)
                     ((cmdline[5] == L'.')) &&
                     ((cmdline[6] == L'e') || (cmdline[6] == L'E')) &&
@@ -1117,11 +1192,25 @@ void MPFLAT_preloader()
                     ((cmdline[8] == L'e') || (cmdline[8] == L'E'))
 #endif
 
+#if  defined(VIVALDI)
+                    ((cmdline[7] == L'.')) &&
+                    ((cmdline[8] == L'e') || (cmdline[8] == L'E')) &&
+                    ((cmdline[9] == L'x') || (cmdline[9] == L'X')) &&
+                    ((cmdline[10] == L'e') || (cmdline[10] == L'E'))
+#endif
+
 #if  defined(MAIL)
                     ((cmdline[13] == L'.')) &&
                     ((cmdline[14] == L'e') || (cmdline[14] == L'E')) &&
                     ((cmdline[15] == L'x') || (cmdline[15] == L'X')) &&
                     ((cmdline[16] == L'e') || (cmdline[16] == L'E'))
+#endif
+
+#ifdef SPOOTIFY
+                    ((cmdline[8] == L'.')) &&
+                    ((cmdline[9] == L'e') || (cmdline[6] == L'E')) &&
+                    ((cmdline[10] == L'x') || (cmdline[7] == L'X')) &&
+                    ((cmdline[11] == L'e') || (cmdline[8] == L'E'))
 #endif
 
                     )
@@ -1144,6 +1233,7 @@ void MPFLAT_preloader()
 }
 
 }
+
 
 void WLDP_preloader_MSEDGE()
 {
@@ -1306,39 +1396,4 @@ EXPORT DWORD WINAPI hook_NotifyServiceStatusChangeW(SC_HANDLE               hSer
 {
     return 0x1;
 }
-
-
-
-/*  
-      std::u16string name;
-if (win::GetVersion() < win::Version::WIN8_1) {
-  // Windows < 8.1 ignores DACLs on certain unnamed objects (like shared
-  // sections). So, we generate a random name when we need to enforce
-  // read-only.
-  /*
-  Windows < 8.1 игнорирует DACL для некоторых неименованных объектов (like shared sections).
-  Поэтому мы генерируем случайное имя, когда нам нужно обеспечить только для чтения.
-  
-    uint64_t rand_values[4];
-    RandBytes(&rand_values, sizeof(rand_values));
-    name = ASCIIToUTF16(StringPrintf("CrSharedMem_%016llx%016llx%016llx%016llx",
-        rand_values[0], rand_values[1],
-        rand_values[2], rand_values[3]));
-    DCHECK(!name.empty());
-}
-*/
-
-
-    /*
-    EXPORT BOOL WINAPI _UpdateProcThreadAttribute(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
-        DWORD dwFlags,
-        DWORD_PTR Attribute,
-        PVOID lpValue,
-        SIZE_T cbSize,
-        PVOID lpPreviousValue,
-        PSIZE_T lpReturnSize) {
-}
-
-
-*/
 
