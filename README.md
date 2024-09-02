@@ -21,7 +21,8 @@ First of all, it is necessary to have disassembling skills and knowledge of [**M
 - API-MS-WIN-CORE-WINRT-L1-1-0   
 - API-MS-WIN-CORE-WINRT-STRING-L1-1-0   
 - API-MS-WIN-POWER-BASE-L1-1-0   
-- API-MS-WIN-SHCORE-SCALING-L1-1-1   
+- API-MS-WIN-SHCORE-SCALING-L1-1-1
+- API-MS-WIN-CORE-SYSINFO-L1-2-1
 - msvproc
 - kernel64  
 - netapi64
@@ -84,6 +85,7 @@ To solve the second problem, we need to assign a name different from the name of
 | API-MS-WIN-CORE-WINRT-STRING-L1-1-0 | ❌ | HSTRING_UserMarshal,... |
 | API-MS-WIN-POWER-BASE-L1-1-0 | ❌ | CallNtPowerInformation,PowerDeterminePlatformRoleEx |
 | API-MS-WIN-SHCORE-SCALING-L1-1-1 | ❌ | GetDpiForMonitor, SetProcessDpiAwareness, GetScaleFactorForMonitor |
+| API-MS-WIN-CORE-SYSINFO-L1-2-1 | ❌/⏳kernel32.dll | DnsHostnameToComputerNameExW, InstallELAMCertificateInfo, SetComputerNameEx2W |
 | msvproc | ❓ |  |
 | kernel64 | kernel32.dll | DiscardVirtualMemory, PrefetchVirtualMemory, SetThreadInformation, GetProcessMitigationPolicy,SetProcessMitigationPolicy, Wow64GetThreadContext, GetPackageFamilyName,... |
 | netapi64 | netapi32.dll | NetGetAadJoinInformation, NetFreeAadJoinInformation |
