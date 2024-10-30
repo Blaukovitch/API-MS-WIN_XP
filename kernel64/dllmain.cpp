@@ -12,6 +12,7 @@
 //#define VIVALDI 1
 //#define MAIL 1
 //#define SPOOTIFY 1
+//#define FIREFOX 1
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -27,6 +28,7 @@ const char A_DVM[] = "DiscardVirtualMemory";
 const char A_PVM[] = "PrefetchVirtualMemory";
 const char A_STI[] = "SetThreadInformation";
 const char A_IETS[] = "IsEnclaveTypeSupported";
+const char A_GSTPAFT[] = "GetSystemTimePreciseAsFileTime";
 const char A_NTSIT[] = "NtSetInformationThread";
 const char A_NTSIVM[] = "NtSetInformationVirtualMemory";
 const char A_GFT[] = "GetFirmwareType";
@@ -36,9 +38,14 @@ const char A_GPMP[] = "GetProcessMitigationPolicy";
 const char A_SPMP[] = "SetProcessMitigationPolicy";
 const char A_GPFN[] = "GetPackageFamilyName";
 const char A_NTQIT[] = "NtQueryInformationToken";
+const char A_GPAI[] = "GetPackageApplicationIds";
+const char A_OPIBFN[] = "OpenPackageInfoByFullName";
+const char A_GAUMI[] = "GetApplicationUserModelId";
+const char A_GCPFN[] = "GetCurrentPackageFullName";
+const char A_GPI[] = "GetProcessInformation";
 
 
-#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY)
+#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX)
 const char PRIMARY_EXE[] = "chrome.exe";
 #endif
 
@@ -66,6 +73,9 @@ const char PRIMARY_EXE[] = "ElectronMail.exe";
 const char PRIMARY_EXE[] = "Spotify.exe";
 #endif //SPOOTIFY
 
+#ifdef FIREFOX
+const char PRIMARY_EXE[] = "firefox.exe";
+#endif //FIREFOX
 
 
 const char PRIMARY_EXE_Is_SANDBOXED_SA[] = "IsSandboxedProcess";
@@ -101,6 +111,62 @@ HANDLE hsafe_table[MAX_TABLE_SAFE];
 SIZE_T hsafe_table_COUNTER = 0;
 volatile size_t hfailed_safe_entrypoint = 0;
 CRITICAL_SECTION csec_fail_safe;
+
+static NTSTATUS QueryAppMemoryInformation(HANDLE ProcessHandle, APP_MEMORY_INFORMATION* pMemPI);
+
+#define STATUS_ERROR_PROCESS_NOT_IN_JOB 0xC00001AE
+
+typedef struct _PROCESS_JOB_MEMORY_INFO
+{
+    ULONGLONG SharedCommitUsage;
+    ULONGLONG PrivateCommitUsage;
+    ULONGLONG PeakPrivateCommitUsage;
+    ULONGLONG PrivateCommitLimit;
+    ULONGLONG TotalCommitLimit;
+} PROCESS_JOB_MEMORY_INFO, * PPROCESS_JOB_MEMORY_INFO;
+
+
+
+typedef struct _VM_COUNTERS_EX
+{
+    SIZE_T PeakVirtualSize;
+    SIZE_T VirtualSize;
+    ULONG PageFaultCount;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+    SIZE_T PrivateUsage;
+} VM_COUNTERS_EX, * PVM_COUNTERS_EX;
+
+
+typedef struct _VM_COUNTERS
+{
+    SIZE_T PeakVirtualSize;
+    SIZE_T VirtualSize;
+    ULONG PageFaultCount;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+} VM_COUNTERS, * PVM_COUNTERS;
+
+typedef struct _VM_COUNTERS_EX2
+{
+    VM_COUNTERS_EX CountersEx;
+    SIZE_T PrivateWorkingSetSize;
+    SIZE_T SharedCommitUsage;
+    SIZE_T unknown1;
+    SIZE_T unknown2;
+} VM_COUNTERS_EX2, * PVM_COUNTERS_EX2;
 
 // ----- ABSENT AP -----
 HMODULE pKernel32;
@@ -176,6 +242,31 @@ typedef LONG (WINAPI api_NtQueryInformationToken)(
     PULONG                  ReturnLength
 );
 
+typedef void (WINAPI api_GetSystemTimePreciseAsFileTime)(
+   LPFILETIME lpSystemTimeAsFileTime
+);
+
+typedef LONG(WINAPI api_GetPackageApplicationIds)(PACKAGE_INFO_REFERENCE packageInfoReference,
+    UINT32* bufferLength,
+    BYTE* buffer,
+    UINT32* count);
+
+typedef LONG(WINAPI api_OpenPackageInfoByFullName)(PCWSTR                 packageFullName,
+    const UINT32           reserved,
+    PACKAGE_INFO_REFERENCE* packageInfoReference);
+
+typedef LONG(WINAPI api_GetApplicationUserModelId)(HANDLE hProcess,
+    UINT32* applicationUserModelIdLength,
+    PWSTR  applicationUserModelId);
+
+typedef LONG(WINAPI api_GetCurrentPackageFullName)(UINT32* packageFullNameLength, 
+    PWSTR  packageFullName);
+
+typedef BOOL(WINAPI api_GetProcessInformation)(HANDLE                    hProcess,
+    PROCESS_INFORMATION_CLASS ProcessInformationClass,
+    LPVOID                    ProcessInformation,
+    DWORD                     ProcessInformationSize);
+
 typedef int(WINAPI api_swprintf_s)(
 wchar_t* buffer, size_t sizeOfBuffer,
 const wchar_t* format, 
@@ -193,7 +284,13 @@ api_SetProcessInformation* farproc_SetProcessInformation = 0;
 api_Wow64GetThreadContext* farproc_Wow64GetThreadContext = 0;
 api_IsEnclaveTypeSupported* farproc_IsEnclaveTypeSupported = 0;
 api_GetPackageFamilyName* farproc_GetPackageFamilyName = 0;
+api_GetSystemTimePreciseAsFileTime* farproc_GetSystemTimePreciseAsFileTime = 0;
+api_GetPackageApplicationIds* farproc_GetPackageApplicationIds = 0;
+api_OpenPackageInfoByFullName* farproc_OpenPackageInfoByFullName = 0;
 api_NtQueryInformationToken* farproc_NtQueryInformationToken = 0;
+api_GetApplicationUserModelId* farproc_GetApplicationUserModelId = 0;
+api_GetCurrentPackageFullName* farproc_GetCurrentPackageFullName = 0;
+api_GetProcessInformation* farproc_GetProcessInformation = 0;
 chrome_IsSandboxedProcess* farproc_IsSandboxedProcess = 0;
 
 api_swprintf_s* farproc_wsprintf_s = 0;
@@ -203,12 +300,13 @@ BOOL DllMain( HMODULE hModule,
                        LPVOID lpReserved
                      )
 {
-    //checkl_stop_option();
+
 
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH: {
         
+        //    checkl_stop_option();
 #ifdef DEBUG_OUT
         //for OUTPUT DEBUG STRINGS (if needed)
         isdp = ::IsDebuggerPresent();
@@ -233,9 +331,16 @@ BOOL DllMain( HMODULE hModule,
             farproc_SetProcessInformation = (api_SetProcessInformation*)::GetProcAddress(pKernel32, A_SPI);
             farproc_GetPackageFamilyName = (api_GetPackageFamilyName*)::GetProcAddress(pKernel32, A_GPFN);
             farproc_Wow64GetThreadContext = (api_Wow64GetThreadContext*)::GetProcAddress(pKernel32, A_W64GTC);
+            farproc_GetSystemTimePreciseAsFileTime = (api_GetSystemTimePreciseAsFileTime*)::GetProcAddress(pKernel32, A_GSTPAFT);
+            farproc_GetPackageApplicationIds = (api_GetPackageApplicationIds*)::GetProcAddress(pKernel32, A_GPAI);
+            farproc_OpenPackageInfoByFullName = (api_OpenPackageInfoByFullName*)::GetProcAddress(pKernel32, A_OPIBFN);
+            farproc_GetCurrentPackageFullName = (api_GetCurrentPackageFullName*)::GetProcAddress(pKernel32, A_GCPFN);
+            farproc_GetProcessInformation = (api_GetProcessInformation*)::GetProcAddress(pKernel32, A_GPI);
+
             farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
             farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
             farproc_NtQueryInformationToken = (api_NtQueryInformationToken*)::GetProcAddress(pNtdll, A_NTQIT);
+            farproc_GetApplicationUserModelId = (api_GetApplicationUserModelId*)::GetProcAddress(pNtdll, A_GAUMI);
 #endif
             farproc_NtSetInformationThread = (api_NtSetInformationThread*)::GetProcAddress(pNtdll, A_NTSIT);
 
@@ -252,7 +357,7 @@ BOOL DllMain( HMODULE hModule,
 //#endif // EDGE
         }//end if (!pKernel32)
         break; }
-    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_ATTACH: {break;}
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH: {
         break;}
@@ -314,7 +419,10 @@ BOOL checkl_stop_option()
 
         {
             while (1)
-              ::MessageBox(NULL, cmdline, NULL, MB_OK);
+            {
+                ::MessageBox(NULL, cmdline, NULL, MB_OK);
+                ::SwitchToThread();
+            }
               
             return TRUE;
         }
@@ -960,13 +1068,32 @@ DLL 	Kernel32.dll
     }
 
 
-    EXPORT LONG WINAPI _GetApplicationUserModelId(
-        HANDLE hProcess,
+   EXPORT LONG _GetApplicationUserModelId(HANDLE hProcess,
         UINT32* applicationUserModelIdLength,
         PWSTR  applicationUserModelId
     ) {
-        return APPMODEL_ERROR_NO_APPLICATION;
+        if (!farproc_GetApplicationUserModelId)
+        {
+            //Windows 7
+            return APPMODEL_ERROR_NO_APPLICATION;
+        }
+        else
+            return ::farproc_GetApplicationUserModelId(hProcess, applicationUserModelIdLength, applicationUserModelId);
     }
+
+   EXPORT LONG _GetCurrentApplicationUserModelId(UINT32* applicationUserModelIdLength,
+       PWSTR  applicationUserModelId
+   ) {
+       LONG result = APPMODEL_ERROR_NO_APPLICATION;
+       HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, GetCurrentProcessId());
+       if (process)
+       {
+           result = _GetApplicationUserModelId(process, applicationUserModelIdLength, applicationUserModelId);
+           CloseHandle(process);
+       }//end if (process)
+       return result;
+   }
+   
 
     //edge 122
     EXPORT LONG WINAPI _GetPackagesByPackageFamily(
@@ -990,6 +1117,19 @@ DLL 	Kernel32.dll
     }
 
 
+    EXPORT LONG WINAPI _GetCurrentPackageFullName(UINT32* packageFullNameLength,
+        PWSTR  packageFullName
+    )
+    {
+        if (!farproc_GetCurrentPackageFullName)
+        {
+            //Windows 7
+            return APPMODEL_ERROR_NO_PACKAGE;
+        }
+        else
+            return ::farproc_GetCurrentPackageFullName(packageFullNameLength, packageFullName);
+    }
+
     EXPORT HRESULT WINAPI _SetThreadDescription(
         HANDLE hThread,
         PCWSTR lpThreadDescription
@@ -1011,6 +1151,236 @@ DLL 	Kernel32.dll
         return ERROR_SUCCESS;
     }
 
+    EXPORT void WINAPI _GetSystemTimePreciseAsFileTime(LPFILETIME lpSystemTimeAsFileTime)
+    {
+        if (!farproc_GetSystemTimePreciseAsFileTime)
+        {
+            //Windows 7
+            if (!lpSystemTimeAsFileTime)
+            {
+                ::SetLastError(E_INVALIDARG);
+                return;
+            }//end if if (!lpSystemTimeAsFileTime)
+            return ::GetSystemTimeAsFileTime(lpSystemTimeAsFileTime);
+        }
+        else
+            return ::farproc_GetSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime);
+    }
+
+    EXPORT LONG _GetPackageApplicationIds(PACKAGE_INFO_REFERENCE packageInfoReference,
+        UINT32* bufferLength,
+        BYTE* buffer,
+        UINT32* count) {
+        if (!farproc_GetPackageApplicationIds)
+        {
+            //Windows 7
+            return ERROR_NOT_FOUND;
+        }
+        else
+            return ::farproc_GetPackageApplicationIds(packageInfoReference, bufferLength, buffer, count);
+    }
+
+    EXPORT LONG _OpenPackageInfoByFullName(
+        PCWSTR                 packageFullName,
+        const UINT32           reserved,
+        PACKAGE_INFO_REFERENCE* packageInfoReference
+    ) {
+        if (!farproc_OpenPackageInfoByFullName)
+        {
+            //Windows 7
+            return ERROR_NOT_FOUND;
+        }
+        else
+            return ::farproc_OpenPackageInfoByFullName(packageFullName, reserved, packageInfoReference);
+    }
+
+    EXPORT BOOL _GetProcessInformation(
+        HANDLE                    hProcess,
+        PROCESS_INFORMATION_CLASS ProcessInformationClass,
+        LPVOID                    ProcessInformation,
+        DWORD                     ProcessInformationSize
+    ) {
+        if (!farproc_GetProcessInformation)
+        {
+            //Windows 7
+            NTSTATUS ret = -1; // esi
+            BYTE v8; // [esp+17h] [ebp-1h] BYREF
+
+            switch (ProcessInformationClass)
+            {
+            case ProcessMemoryPriority:
+                ret = NtQueryInformationProcess(
+                    hProcess,
+                    (PROCESSINFOCLASS)ProcessPagePriority,
+                    ProcessInformation,
+                    ProcessInformationSize,
+                    0);
+            case ProcessAppMemoryInfo:
+                if (ProcessInformationSize != sizeof(APP_MEMORY_INFORMATION))
+                {
+                    ::SetLastError(ERROR_BAD_ARGUMENTS);
+                    return FALSE;
+                }
+                ret = QueryAppMemoryInformation(hProcess, (APP_MEMORY_INFORMATION*)ProcessInformation);
+            case ProcessInPrivateInfo:
+                if (ProcessInformationSize != sizeof(BYTE))
+                {
+                    ::SetLastError(ERROR_BAD_ARGUMENTS);
+                    return FALSE;
+                }
+                ret = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)(ProcessRaisePriority | 0x40), ProcessInformation, sizeof(BYTE), 0);
+            case ProcessProtectionLevelInfo:
+                if (!ProcessInformation)
+                {
+                    ::SetLastError(ERROR_BAD_ARGUMENTS);
+                    return FALSE;
+                }
+                if (ProcessInformationSize != sizeof(PROCESS_PROTECTION_LEVEL_INFORMATION))
+                {
+                    ::SetLastError(ERROR_BAD_ARGUMENTS);
+                    return FALSE;
+                }
+                ret = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)(ProcessAffinityUpdateMode | ProcessUserModeIOPL), &v8, sizeof(BYTE), 0);
+                if (FAILED(ret))
+                {
+                    ::SetLastError(ERROR_NOT_SUPPORTED);
+                    return FALSE;
+                }
+                if (v8 > 0x51u)
+                {
+                    switch (v8)
+                    {
+                    case 0x52u:
+                        *(DWORD*)ProcessInformation = 1;
+                    case 0x61u:
+                        *(DWORD*)ProcessInformation = 0;
+                    case 0x62u:
+                    case 0x72u:
+                        *(DWORD*)ProcessInformation = 5;
+                    case 0x81u:
+                        *(DWORD*)ProcessInformation = 8;
+                    }
+                }
+                else
+                {
+                    switch (v8)
+                    {
+                    case 0x51u:
+                        *(DWORD*)ProcessInformation = 2;
+                    case 0u:
+                        *(DWORD*)ProcessInformation = -2;
+                    case 8u:
+                    case 0x12u:
+                        *(DWORD*)ProcessInformation = 7;
+                    case 0x21u:
+                        *(DWORD*)ProcessInformation = 6;
+                    case 0x31u:
+                        *(DWORD*)ProcessInformation = 3;
+                    case 0x41u:
+                        *(DWORD*)ProcessInformation = 4;
+                       
+                    }
+                    ret = 0;
+                    return ret >= 0;
+                }
+                
+                    ::SetLastError(ERROR_NOT_SUPPORTED);
+                    return FALSE;
+                
+            case ProcessLeapSecondInfo:
+                if (!ProcessInformation)
+                {
+                   ::SetLastError(ERROR_NOT_SUPPORTED);
+                   return FALSE;
+                }
+                if (ProcessInformationSize != sizeof(UINT64))
+                {
+                     ::SetLastError(ERROR_NOT_SUPPORTED);
+                     return FALSE;
+                }
+                int SPI = 0;
+                ret = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)(ProcessIoPriority | 0x40), &SPI, sizeof(UINT64), 0);
+                if (FAILED(ret))
+                {
+                    ::SetLastError(ERROR_NOT_SUPPORTED);
+                    return FALSE;
+                }
+                PROCESS_LEAP_SECOND_INFO* pLeapSecInfo = reinterpret_cast<PROCESS_LEAP_SECOND_INFO*>(ProcessInformation);
+                pLeapSecInfo->Flags = SPI;
+                pLeapSecInfo->Reserved = 0;
+       
+                ret = 0;
+                return ret >= 0;
+            }
+
+            if (FAILED(ret))
+            {
+                ::SetLastError(ERROR_NOT_SUPPORTED);
+                return FALSE;
+            }
+            ::SetLastError(ERROR_SUCCESS);
+            return TRUE;
+            
+        }
+        else
+            return ::farproc_GetProcessInformation(hProcess, ProcessInformationClass, ProcessInformation, ProcessInformationSize);
+    }
+
+
+    NTSTATUS QueryAppMemoryInformation(HANDLE ProcessHandle, APP_MEMORY_INFORMATION* pMemPI)
+    {
+        APP_MEMORY_INFORMATION local_pmi;
+        VM_COUNTERS_EX2 mem_counters;
+        PROCESS_JOB_MEMORY_INFO jmi;
+        UINT64 ava_commits = 0;
+
+        NTSTATUS retq = NtQueryInformationProcess(ProcessHandle, PROCESSINFOCLASS(ProcessJobMemoryInformation), &jmi, sizeof(_PROCESS_JOB_MEMORY_INFO), 0);
+        if (FAILED(retq) && retq != STATUS_ERROR_PROCESS_NOT_IN_JOB)
+            return retq;
+        memset(&local_pmi, 0, sizeof(APP_MEMORY_INFORMATION));
+        if (retq == STATUS_ERROR_PROCESS_NOT_IN_JOB)
+        {
+            retq = NtQueryInformationProcess(ProcessHandle, PROCESSINFOCLASS(ProcessVmCounters), &mem_counters, sizeof(VM_COUNTERS_EX2), 0);
+            if (FAILED(retq))
+                return retq;
+            local_pmi.PrivateCommitUsage = mem_counters.CountersEx.PeakPagefileUsage;
+            local_pmi.PeakPrivateCommitUsage = mem_counters.unknown1;
+            local_pmi.TotalCommitUsage = mem_counters.unknown2 + mem_counters.CountersEx.PeakPagefileUsage;
+        }
+        int commit_usage = jmi.PrivateCommitUsage + jmi.SharedCommitUsage;
+        local_pmi.PeakPrivateCommitUsage = jmi.PeakPrivateCommitUsage;
+        local_pmi.PrivateCommitUsage = jmi.PrivateCommitUsage;
+        local_pmi.TotalCommitUsage = commit_usage;
+        if (jmi.TotalCommitLimit)
+        {
+            ava_commits = (jmi.TotalCommitLimit - commit_usage) >> 32;
+            local_pmi.AvailableCommit = jmi.TotalCommitLimit - commit_usage;
+        }
+        if (jmi.PrivateCommitLimit)
+        {
+            ava_commits = (jmi.PrivateCommitLimit - jmi.PrivateCommitUsage) >> 32;
+            local_pmi.AvailableCommit = jmi.PrivateCommitLimit - jmi.PrivateCommitUsage;
+        }
+        /*
+        retq = NtQuerySystemInformation(
+            0x7b,
+            SystemInformation,
+            0x10u,
+            0);
+        if (SUCCEEDED(retq))
+        {
+            v5 = (v18 - (unsigned __int64)v17) * Size;
+            LODWORD(v9[0]) = (v18 - v17) * Size;
+        LABEL_8:
+            HIDWORD(v9[0]) = HIDWORD(v5);
+            InformationProcess = 0;
+            qmemcpy(v10, v9, 0x20u);
+        }
+        */
+        memcpy(pMemPI, &local_pmi, sizeof(APP_MEMORY_INFORMATION));
+        return retq;
+}
+   
 #ifdef SPOOTIFY
     //fix spooty kernel32.dll > redirected to > user32.dll
     EXPORT int WINAPI _LoadStringW(HINSTANCE hInstance,
@@ -1174,6 +1544,16 @@ void MPFLAT_preloader()
                     ((cmdline[12] == L'l') || (cmdline[12] == L'L')) &&
 #endif
 
+#ifdef FIREFOX
+                    ((cmdline[0] == L'f') || (cmdline[0] == L'F')) &&
+                    ((cmdline[1] == L'i') || (cmdline[1] == L'I')) &&
+                    ((cmdline[2] == L'r') || (cmdline[2] == L'R')) &&
+                    ((cmdline[3] == L'e') || (cmdline[3] == L'E')) &&
+                    ((cmdline[5] == L'f') || (cmdline[5] == L'F')) &&
+                    ((cmdline[6] == L'o') || (cmdline[6] == L'O')) &&
+                    ((cmdline[7] == L'x') || (cmdline[7] == L'X')) &&
+#endif
+
                     //Spotify.exe
 #ifdef SPOOTIFY
                     ((cmdline[0] == L's') || (cmdline[0] == L'S')) &&
@@ -1206,7 +1586,7 @@ void MPFLAT_preloader()
                     ((cmdline[16] == L'e') || (cmdline[16] == L'E'))
 #endif
 
-#ifdef SPOOTIFY
+#if defined(SPOOTIFY) || defined(FIREFOX)
                     ((cmdline[8] == L'.')) &&
                     ((cmdline[9] == L'e') || (cmdline[6] == L'E')) &&
                     ((cmdline[10] == L'x') || (cmdline[7] == L'X')) &&
@@ -1396,4 +1776,5 @@ EXPORT DWORD WINAPI hook_NotifyServiceStatusChangeW(SC_HANDLE               hSer
 {
     return 0x1;
 }
+
 

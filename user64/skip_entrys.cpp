@@ -1,6 +1,5 @@
 ﻿//[80_PA] ELF, cracklab/exelab, 2023-2024
 //FLAG
-
 //214
 extern "C"
 {
@@ -1997,5 +1996,215 @@ DLL 	User32.dll
 		return  ::GetWindowRgnBox(hWnd, lprc);
 	}
 	
+	//VIVALDI
+	EXPORT HWND WINAPI _CreateDialogParamW(HINSTANCE hInstance,
+		LPCWSTR lpTemplateName,
+		HWND hWndParent,
+		DLGPROC lpDialogFunc,
+		LPARAM dwInitParam)
+	{
+		return  ::CreateDialogParamW(hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam);
+	}
+
+	EXPORT HWND WINAPI _GetDlgItem(HWND hDlg,
+		int nIDDlgItem)
+	{
+		return  ::GetDlgItem(hDlg, nIDDlgItem);
+	}
+	
+	EXPORT BOOL WINAPI _IsDialogMessageW(HWND hDlg,
+		LPMSG lpMsg)
+	{
+		return  ::IsDialogMessageW(hDlg, lpMsg);
+	}
+
+	EXPORT BOOL WINAPI _WaitMessage()
+	{
+		return  ::WaitMessage();
+	}
+
+
+	EXPORT BOOL WINAPI _FlashWindow(HWND hWnd,
+		BOOL bInvert)
+	{
+		return  ::FlashWindow(hWnd, bInvert);
+	}
+
+	EXPORT BOOL WINAPI _GetRawInputDeviceInfoA(HANDLE hDevice,
+		UINT uiCommand,
+		PVOID pData,
+		PUINT pcbSize)
+	{
+		return  ::GetRawInputDeviceInfoA(hDevice, uiCommand, pData, pcbSize);
+	}
+
+	EXPORT BOOL WINAPI _ChangeDisplaySettingsExW(LPCWSTR lpszDeviceName,
+		DEVMODEW* lpDevMode,
+		HWND hwnd,
+		DWORD dwflags,
+		LPVOID lParam)
+	{
+		return  ::ChangeDisplaySettingsExW(lpszDeviceName, lpDevMode, hwnd, dwflags, lParam);
+	}
+
+	EXPORT BOOL WINAPI _ToUnicode(UINT wVirtKey,
+		UINT wScanCode,
+		CONST BYTE* lpKeyState,
+		LPWSTR pwszBuff,
+		int cchBuff,
+		UINT wFlags)
+	{
+		return  ::ToUnicode(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags);
+	}
+
+	EXPORT BOOL WINAPI _MsgWaitForMultipleObjects(DWORD nCount,
+		CONST HANDLE* pHandles,
+		BOOL fWaitAll,
+		DWORD dwMilliseconds,
+		DWORD dwWakeMask)
+	{
+		return  ::MsgWaitForMultipleObjects(nCount, pHandles, fWaitAll, dwMilliseconds, dwWakeMask);
+	}
+
+	//FFOX 131.0
+	EXPORT HKL WINAPI _ActivateKeyboardLayout(HKL hkl,
+		UINT Flags)
+	{
+		return ::ActivateKeyboardLayout(hkl, Flags);
+	}
+
+	EXPORT BOOL WINAPI _AnimateWindow(HWND hWnd,
+		DWORD dwTime,
+		DWORD dwFlags)
+	{
+		return ::AnimateWindow(hWnd, dwTime, dwFlags);
+	}
+
+	EXPORT long WINAPI _BroadcastSystemMessageW(DWORD flags,
+		LPDWORD lpInfo,
+		UINT Msg,
+		WPARAM wParam,
+		LPARAM lParam)
+	{
+		return ::BroadcastSystemMessageW(flags, lpInfo, Msg, wParam, lParam);
+	}
+
+	EXPORT BOOL WINAPI _CloseGestureInfoHandle(HGESTUREINFO hGestureInfo)
+	{
+		return ::CloseGestureInfoHandle(hGestureInfo);
+	}
+
+	EXPORT BOOL WINAPI _GetClassInfoW(HINSTANCE hInstance,
+		LPCWSTR lpClassName,
+		LPWNDCLASSW lpWndClass)
+	{
+		return ::GetClassInfoW(hInstance, lpClassName, lpWndClass);
+	}
+
+	EXPORT BOOL WINAPI _GetClassWord(HWND hWnd,
+		int nIndex)
+	{
+		return ::GetClassWord(hWnd, nIndex);
+	}
+
+	EXPORT int WINAPI _GetClipboardFormatNameW(UINT format,
+		LPWSTR lpszFormatName,
+		int cchMaxCount)
+	{
+		return ::GetClipboardFormatNameW(format, lpszFormatName, cchMaxCount);
+	}
+
+	EXPORT int WINAPI _GetGestureInfo(HGESTUREINFO hGestureInfo,
+		PGESTUREINFO pGestureInfo)
+	{
+		return ::GetGestureInfo(hGestureInfo, pGestureInfo);
+	}
+
+	EXPORT BOOL WINAPI _GetKeyboardLayoutNameA(LPSTR pwszKLID)
+	{
+		return ::GetKeyboardLayoutNameA(pwszKLID);
+	}
+
+	EXPORT BOOL WINAPI _GetTouchInputInfo(HTOUCHINPUT hTouchInput,               // input event handle; from touch message lParam
+		UINT cInputs,                          // number of elements in the array
+		PTOUCHINPUT pInputs,  // array of touch inputs
+		int cbSize)
+	{
+		return ::GetTouchInputInfo(hTouchInput, cInputs, pInputs, cbSize);
+	}
+
+	EXPORT BOOL WINAPI _GetUpdateRect(HWND hWnd,
+		LPRECT lpRect,
+		BOOL bErase)
+	{
+		return ::GetUpdateRect(hWnd, lpRect, bErase);
+	}
+
+	EXPORT BOOL WINAPI _InSendMessage(VOID)
+	{
+		return ::InSendMessage();
+	}
+
+	EXPORT HKL WINAPI _LoadKeyboardLayoutA(LPCSTR pwszKLID,
+		UINT Flags)
+	{
+		return ::LoadKeyboardLayoutA(pwszKLID, Flags);
+	}
+
+	EXPORT BOOL WINAPI _ReplyMessage(LRESULT lResult)
+	{
+		return ::ReplyMessage(lResult);
+	}
+
+	EXPORT BOOL WINAPI _SetGestureConfig(HWND hwnd,                                     // window for which configuration is specified
+		DWORD dwReserved,                              // reserved, must be 0
+		UINT cIDs,                                     // count of GESTURECONFIG structures
+		PGESTURECONFIG pGestureConfig,    // array of GESTURECONFIG structures, dwIDs will be processed in the
+															// order specified and repeated occurances will overwrite previous ones
+		UINT cbSize)
+	{
+		return ::SetGestureConfig(hwnd, dwReserved, cIDs, pGestureConfig, cbSize);
+	}
+
+	EXPORT BOOL WINAPI _SetSysColors(int cElements,
+		CONST INT* lpaElements,
+		CONST COLORREF* lpaRgbValues)
+	{
+		return ::SetSysColors(cElements, lpaElements, lpaRgbValues);
+	}
+
+	EXPORT BOOL WINAPI _ShowCaret(HWND hWnd)
+	{
+		return ::ShowCaret(hWnd);
+	}
+
+	EXPORT BOOL WINAPI _SystemParametersInfoA(UINT uiAction,
+		UINT uiParam,
+		PVOID pvParam,
+		UINT fWinIni)
+	{
+		return ::SystemParametersInfoA(uiAction, uiParam, pvParam, fWinIni);
+	}
+
+	EXPORT BOOL WINAPI _UnloadKeyboardLayout(HKL hkl)
+	{
+		return ::UnloadKeyboardLayout(hkl);
+	}
+
+	EXPORT BOOL WINAPI _ValidateRect(HWND hWnd,
+		CONST RECT* lpRect)
+	{
+		return ::ValidateRect(hWnd, lpRect);
+	}
+
+	EXPORT void _keybd_event(
+		BYTE      bVk,
+		BYTE      bScan,
+		DWORD     dwFlags,
+		ULONG_PTR dwExtraInfo
+	) {
+		return keybd_event(bVk, bScan, dwFlags, dwExtraInfo);
+	}
+
 	
 }

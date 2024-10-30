@@ -2,7 +2,6 @@
 //FLAG 
 //#define DEBUG_OUT 1
 
-
 // ------ globals ------ 
 BOOL isdp = false;
 
@@ -21,6 +20,9 @@ const char A_GPITR[] = "GetPointerInputTransform";
 const char A_GPD[] = "GetPointerDevice";
 const char A_GPDS[] = "GetPointerDevices";
 const char A_RPDN[] = "RegisterPointerDeviceNotifications";
+const char A_STDC[] = "SetThreadDpiAwarenessContext";
+const char A_CSPD[] = "CreateSyntheticPointerDevice";
+const char A_ISPI[] = "InjectSyntheticPointerInput";
 #pragma code_seg(pop)
 
 //https://stackoverflow.com/questions/66161063/c-windows-api-how-to-retrieve-font-scaling-percentage-on-windows-10
@@ -64,6 +66,16 @@ typedef BOOL(WINAPI api_GetPointerDevices)(UINT32* deviceCount, POINTER_DEVICE_I
 
 typedef BOOL(WINAPI api_RegisterPointerDeviceNotifications)(HWND window, BOOL notifyRange);
 
+typedef DPI_AWARENESS_CONTEXT(WINAPI api_SetThreadDpiAwarenessContext)(DPI_AWARENESS_CONTEXT dpiContext);
+
+typedef HSYNTHETICPOINTERDEVICE(WINAPI api_CreateSyntheticPointerDevice)(POINTER_INPUT_TYPE    pointerType,
+    ULONG                 maxCount,
+    POINTER_FEEDBACK_MODE mode);
+
+typedef BOOL(WINAPI api_InjectSyntheticPointerInput)(HSYNTHETICPOINTERDEVICE device,
+    const POINTER_TYPE_INFO* pointerInfo,
+    UINT32                  count);
+
 api_GetPointerPenInfo* farproc_GetPointerPenInfo = 0;
 api_GetPointerType* farproc_GetPointerType = 0;
 api_RegisterSuspendResumeNotification* farproc_RegisterSuspendResumeNotification = 0;
@@ -76,6 +88,9 @@ api_GetPointerInputTransform* farproc_GetPointerInputTransform = 0;
 api_GetPointerDevice* farproc_GetPointerDevice = 0;
 api_GetPointerDevices* farproc_GetPointerDevices = 0;
 api_RegisterPointerDeviceNotifications* farproc_RegisterPointerDeviceNotifications = 0;
+api_SetThreadDpiAwarenessContext* farproc_SetThreadDpiAwarenessContext = 0;
+api_CreateSyntheticPointerDevice* farproc_CreateSyntheticPointerDevice = 0;
+api_InjectSyntheticPointerInput* farproc_InjectSyntheticPointerInput = 0;
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -85,7 +100,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH: {
-
+       
 
 #ifdef DEBUG_OUT
         //for OUTPUT DEBUG STRINGS (if needed)
@@ -109,9 +124,12 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                 farproc_GetPointerDevice = (api_GetPointerDevice*)::GetProcAddress(pUser32, A_GPD);
                 farproc_GetPointerDevices = (api_GetPointerDevices*)::GetProcAddress(pUser32, A_GPDS);
                 farproc_RegisterPointerDeviceNotifications = (api_RegisterPointerDeviceNotifications*)::GetProcAddress(pUser32, A_RPDN);
-
-                farproc_PowerRegisterSuspendResumeNotification = (api_PowerRegisterSuspendResumeNotification*)::GetProcAddress(pPPow, A_POWRRSRN);
-                farproc_PowerUnregisterSuspendResumeNotification = (api_PowerUnregisterSuspendResumeNotification*)::GetProcAddress(pPPow, A_POWRURSRN);
+                farproc_SetThreadDpiAwarenessContext = (api_SetThreadDpiAwarenessContext*)::GetProcAddress(pUser32, A_STDC);
+                farproc_SetThreadDpiAwarenessContext = (api_SetThreadDpiAwarenessContext*)::GetProcAddress(pUser32, A_STDC);
+                farproc_SetThreadDpiAwarenessContext = (api_SetThreadDpiAwarenessContext*)::GetProcAddress(pUser32, A_STDC);
+                //FFOX 130.0.1
+                farproc_CreateSyntheticPointerDevice = (api_CreateSyntheticPointerDevice*)::GetProcAddress(pPPow, A_CSPD);
+                farproc_InjectSyntheticPointerInput = (api_InjectSyntheticPointerInput*)::GetProcAddress(pPPow, A_ISPI);
                 
             }//end if (pUser32 && pNtdll)
         }//end if (!pKernel32)
@@ -455,4 +473,75 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
         }//end if (!farproc_DiscardVirtualMemory)
         return farproc_RegisterPointerDeviceNotifications(window, notifyRange);
     }
+
+     EXPORT DPI_AWARENESS_CONTEXT  _SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT dpiContext){
+#ifdef DEBUG_OUT
+        if (isdp)
+        {
+            WCHAR Buffer[1024];
+            wsprintf(Buffer, L"[%i] - farproc_SetThreadDpiAwarenessContext()", ::GetCurrentThreadId());
+            ::OutputDebugString(Buffer);
+        }//end if (isdp)
+#endif // DEBUG_OUT
+
+        if (!farproc_SetThreadDpiAwarenessContext)
+        {
+            //Windows 7
+            if (!dpiContext)
+            {             
+                ::SetLastError(ERROR_INVALID_PARAMETER);
+                return FALSE;
+            }//end if (!hwnd)
+
+            //no transform
+            //inputTransform->m;
+            ::SetLastError(ERROR_SUCCESS);
+            return NULL;
+        }//end if (!farproc_DiscardVirtualMemory)
+        return farproc_SetThreadDpiAwarenessContext(dpiContext);
+    }
+
+     EXPORT HSYNTHETICPOINTERDEVICE  _CreateSyntheticPointerDevice(POINTER_INPUT_TYPE    pointerType,
+         ULONG                 maxCount,
+         POINTER_FEEDBACK_MODE mode) {
+#ifdef DEBUG_OUT
+         if (isdp)
+         {
+             WCHAR Buffer[1024];
+             wsprintf(Buffer, L"[%i] - farproc_CreateSyntheticPointerDevice()", ::GetCurrentThreadId());
+             ::OutputDebugString(Buffer);
+         }//end if (isdp)
+#endif // DEBUG_OUT
+
+         if (!farproc_CreateSyntheticPointerDevice)
+         {
+             //Windows 7
+        
+             ::SetLastError(ERROR_NOT_SUPPORTED);
+             return NULL;
+         }//end if (!farproc_DiscardVirtualMemory)
+         return farproc_CreateSyntheticPointerDevice(pointerType, maxCount, mode);
+     }
+
+     EXPORT BOOL  _InjectSyntheticPointerInput(HSYNTHETICPOINTERDEVICE device,
+         const POINTER_TYPE_INFO* pointerInfo,
+         UINT32                  count) {
+#ifdef DEBUG_OUT
+         if (isdp)
+         {
+             WCHAR Buffer[1024];
+             wsprintf(Buffer, L"[%i] - farproc_InjectSyntheticPointerInput()", ::GetCurrentThreadId());
+             ::OutputDebugString(Buffer);
+         }//end if (isdp)
+#endif // DEBUG_OUT
+
+         if (!farproc_InjectSyntheticPointerInput)
+         {
+             //Windows 7
+
+             ::SetLastError(ERROR_NOT_SUPPORTED);
+             return NULL;
+         }//end if (!farproc_DiscardVirtualMemory)
+         return farproc_InjectSyntheticPointerInput(device, pointerInfo, count);
+     }
 }
