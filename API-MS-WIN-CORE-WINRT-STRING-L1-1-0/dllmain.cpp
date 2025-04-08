@@ -465,13 +465,12 @@ __declspec(dllexport) UINT32 APIENTRY _WindowsDuplicateString(
     return E_INVALIDARG;
 }
 
-__declspec(dllexport) HRESULT APIENTRY WindowsStringHasEmbeddedNull(
+__declspec(dllexport) HRESULT APIENTRY _WindowsStringHasEmbeddedNull(
     HSTRING string,
     BOOL* hasEmbedNull
 )
 {
     return E_INVALIDARG;
 }
-
 
 }

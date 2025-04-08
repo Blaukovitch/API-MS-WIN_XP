@@ -1,4 +1,4 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023-2024
+﻿//[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG
 //214
 extern "C"
@@ -2197,7 +2197,37 @@ DLL 	User32.dll
 		return ::ValidateRect(hWnd, lpRect);
 	}
 
-	EXPORT void _keybd_event(
+	EXPORT HICON WINAPI  _CreateIconFromResource(PBYTE presbits,
+		DWORD dwResSize,
+		BOOL fIcon,
+		DWORD dwVer)
+	{
+		return ::CreateIconFromResource(presbits, dwResSize, fIcon, dwVer);
+	}
+
+	EXPORT int WINAPI _DrawTextW(HDC hdc,
+		LPCWSTR lpchText,
+		int cchText,
+		LPRECT lprc,
+		UINT format) {
+		return ::DrawTextW(hdc, lpchText, cchText, lprc, format);
+	}
+
+	EXPORT BOOL WINAPI _SetProcessDefaultLayout(DWORD dwDefaultLayout) {
+		return ::SetProcessDefaultLayout(dwDefaultLayout);
+	}
+
+	EXPORT HWND WINAPI _GetOpenClipboardWindow() {
+		return ::GetOpenClipboardWindow();
+	}
+
+	EXPORT DWORD WINAPI  _CharUpperBuffW(LPWSTR lpsz,
+		 DWORD cchLength) {
+		 return ::CharUpperBuffW(lpsz, cchLength);
+	}
+
+	
+	EXPORT void WINAPI _keybd_event(
 		BYTE      bVk,
 		BYTE      bScan,
 		DWORD     dwFlags,
@@ -2206,5 +2236,35 @@ DLL 	User32.dll
 		return keybd_event(bVk, bScan, dwFlags, dwExtraInfo);
 	}
 
+	//mailbrid
+	EXPORT HDWP WINAPI _BeginDeferWindowPos(
+		int nNumWindows)
+		{
+			return ::BeginDeferWindowPos(nNumWindows);
+		}
 	
+	EXPORT HDWP WINAPI _DeferWindowPos(
+		HDWP hWinPosInfo,
+		HWND hWnd,
+		HWND hWndInsertAfter,
+		int  x,
+		int  y,
+		int  cx,
+		int  cy,
+		UINT uFlags)
+	{
+		return ::DeferWindowPos(hWinPosInfo, hWnd, hWndInsertAfter, x, y, cx, cy, uFlags);
+	}
+
+	EXPORT BOOL  WINAPI _EndDeferWindowPos(
+		HDWP hWinPosInfo)
+	{
+		return ::EndDeferWindowPos(hWinPosInfo);
+	}
+
+	EXPORT BOOL WINAPI _LockWindowUpdate(
+		HWND hWndLock)
+	{
+			return ::LockWindowUpdate(hWndLock);
+	}
 }

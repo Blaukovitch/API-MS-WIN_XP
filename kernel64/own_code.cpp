@@ -264,6 +264,7 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
      return i;
  }
 
+
  __inline size_t* set_IMPORT_table_DLLNAME__HOOKS_layots(ppool_I ppol_cursor, HMODULE hm, IMAGE_THUNK_DATA* pThunk_data_original_NEXT, size_t* pFST)
  {
 
@@ -280,4 +281,4 @@ size_t __cdecl stricmp1(const char* pStr1, const char* pStr2) {
 
      return NULL;
  }
- 
+

@@ -1,4 +1,4 @@
-//[80_PA] ELF, cracklab/exelab, 2023
+//[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG 
 
 
@@ -1294,11 +1294,11 @@ EXPORT ULONGLONG _GetTickCount64(VOID) {
     return ::GetTickCount64();
 }
 #else
-EXPORT ULONGLONG  __GetTickCount64(VOID) {
+EXPORT ULONGLONG   __GetTickCount64(VOID) {
     return ::GetTickCount64();
 }
 
-EXPORT DWORD  __GetTickCount(VOID) {
+EXPORT DWORD   __GetTickCount(VOID) {
     return ::GetTickCount();
 }
 #endif // _AMD64_
@@ -2507,6 +2507,7 @@ EXPORT BOOL WINAPI _VerifyVersionInfoW(LPOSVERSIONINFOEXW lpVersionInformation,
     return ::VerifyVersionInfoW(lpVersionInformation, dwTypeMask, dwlConditionMask);
 }
 
+/*
 EXPORT LPVOID WINAPI _VirtualAlloc(LPVOID lpAddress,
     SIZE_T dwSize,
     DWORD flAllocationType,
@@ -2516,6 +2517,7 @@ EXPORT LPVOID WINAPI _VirtualAlloc(LPVOID lpAddress,
         flAllocationType,
         flProtect);
 }
+*/
 
 EXPORT LPVOID WINAPI _VirtualAllocEx(HANDLE hProcess,
     LPVOID lpAddress,
@@ -3238,7 +3240,7 @@ EXPORT BOOL _GetProcessIoCounters(
     }
 
 #else
-EXPORT BOOL __GetProcessIoCounters(
+EXPORT BOOL WINAPI _GetProcessIoCounters(
     HANDLE       hProcess,
     PIO_COUNTERS lpIoCounters
 ) {
@@ -3247,7 +3249,7 @@ EXPORT BOOL __GetProcessIoCounters(
 
 
 
-EXPORT HANDLE __OpenFileMappingW(DWORD dwDesiredAccess,
+EXPORT HANDLE WINAPI _OpenFileMappingW(DWORD dwDesiredAccess,
     BOOL bInheritHandle,
     LPCWSTR lpName) {
     return ::OpenFileMappingW(dwDesiredAccess,
@@ -3256,7 +3258,7 @@ EXPORT HANDLE __OpenFileMappingW(DWORD dwDesiredAccess,
     }
 
 
-    EXPORT BOOL __QueueUserWorkItem(LPTHREAD_START_ROUTINE Function,
+    EXPORT BOOL WINAPI _QueueUserWorkItem(LPTHREAD_START_ROUTINE Function,
         PVOID Context,
         ULONG Flags) {
         return ::QueueUserWorkItem(Function,
@@ -3265,7 +3267,7 @@ EXPORT HANDLE __OpenFileMappingW(DWORD dwDesiredAccess,
     }
 
 
-    EXPORT HANDLE __ReOpenFile(HANDLE  hOriginalFile,
+    EXPORT HANDLE WINAPI _ReOpenFile(HANDLE  hOriginalFile,
         DWORD   dwDesiredAccess,
         DWORD   dwShareMode,
         DWORD   dwFlagsAndAttributes) {
@@ -3275,7 +3277,7 @@ EXPORT HANDLE __OpenFileMappingW(DWORD dwDesiredAccess,
             dwFlagsAndAttributes);
     }
 
-    EXPORT BOOL __ReadConsoleInputW(HANDLE hConsoleInput,
+    EXPORT BOOL WINAPI _ReadConsoleInputW(HANDLE hConsoleInput,
         PINPUT_RECORD lpBuffer,
         DWORD nLength,
         LPDWORD lpNumberOfEventsRead) {
@@ -3285,7 +3287,7 @@ EXPORT HANDLE __OpenFileMappingW(DWORD dwDesiredAccess,
             lpNumberOfEventsRead);
     }
 
-    EXPORT BOOL __ReadDirectoryChangesW(HANDLE hDirectory,
+    EXPORT BOOL WINAPI _ReadDirectoryChangesW(HANDLE hDirectory,
         LPVOID lpBuffer,
         DWORD nBufferLength,
         BOOL bWatchSubtree,
@@ -3303,44 +3305,44 @@ EXPORT HANDLE __OpenFileMappingW(DWORD dwDesiredAccess,
             lpCompletionRoutine);
     }
 
-    EXPORT ULONG __RemoveVectoredExceptionHandler(PVOID Handle) {
+    EXPORT ULONG WINAPI _RemoveVectoredExceptionHandler(PVOID Handle) {
         return ::RemoveVectoredExceptionHandler(Handle);
     }
 
-    EXPORT BOOL __SetConsoleCursorInfo(HANDLE hConsoleOutput,
+    EXPORT BOOL WINAPI _SetConsoleCursorInfo(HANDLE hConsoleOutput,
         CONST CONSOLE_CURSOR_INFO* lpConsoleCursorInfo) {
         return ::SetConsoleCursorInfo(hConsoleOutput,
             lpConsoleCursorInfo);
     }
 
-    EXPORT BOOL __SetConsoleCursorPosition(HANDLE hConsoleOutput,
+    EXPORT BOOL WINAPI _SetConsoleCursorPosition(HANDLE hConsoleOutput,
         COORD dwCursorPosition) {
         return ::SetConsoleCursorPosition(hConsoleOutput,
             dwCursorPosition);
     }
 
 
-    EXPORT BOOL __SetConsoleMode(HANDLE hConsoleHandle,
+    EXPORT BOOL WINAPI _SetConsoleMode(HANDLE hConsoleHandle,
         DWORD dwMode) {
         return ::SetConsoleMode(hConsoleHandle,
             dwMode);
     }
 
-    EXPORT BOOL __SetConsoleTitleW(LPCWSTR lpConsoleTitle) {
+    EXPORT BOOL WINAPI _SetConsoleTitleW(LPCWSTR lpConsoleTitle) {
         return ::SetConsoleTitleW(lpConsoleTitle);
     }
 
-    EXPORT BOOL __SetFileCompletionNotificationModes(HANDLE FileHandle,
+    EXPORT BOOL WINAPI _SetFileCompletionNotificationModes(HANDLE FileHandle,
         UCHAR Flags) {
         return ::SetFileCompletionNotificationModes(FileHandle,
             Flags);
     }
 
-    EXPORT BOOL __UnregisterWait(HANDLE WaitHandle) {
+    EXPORT BOOL WINAPI _UnregisterWait(HANDLE WaitHandle) {
         return ::UnregisterWait(WaitHandle);
     }
 
-    EXPORT BOOL __WriteConsoleInputW(HANDLE hConsoleInput,
+    EXPORT BOOL WINAPI _WriteConsoleInputW(HANDLE hConsoleInput,
         CONST INPUT_RECORD* lpBuffer,
         DWORD nLength,
         LPDWORD lpNumberOfEventsWritten) {
@@ -3760,7 +3762,7 @@ EXPORT BOOL WINAPI _SetThreadStackGuarantee(PULONG StackSizeInBytes)
     return ::SetThreadStackGuarantee(StackSizeInBytes);
 }
 
-EXPORT BOOL __WritePrivateProfileStringW(LPCWSTR lpAppName,
+EXPORT BOOL WINAPI _WritePrivateProfileStringW(LPCWSTR lpAppName,
     LPCWSTR lpKeyName,
     LPCWSTR lpString,
     LPCWSTR lpFileName)
@@ -3823,7 +3825,7 @@ EXPORT BOOL WINAPI _DisableThreadLibraryCalls(HMODULE hLibModule)
 {
     return  ::DisableThreadLibraryCalls(hLibModule);
 }
-#endif // __AMD64
+#endif // _AMD64
 //opera_GX
 
 EXPORT BOOL WINAPI _SetProcessAffinityMask(HANDLE hProcess,
@@ -3873,7 +3875,7 @@ EXPORT HANDLE WINAPI _OpenFileMappingA(DWORD dwDesiredAccess,
     return ::OpenFileMappingA(dwDesiredAccess, bInheritHandle, lpName);
 }
 
-EXPORT BOOL _GetQueuedCompletionStatusEx(HANDLE CompletionPort,
+EXPORT BOOL WINAPI _GetQueuedCompletionStatusEx(HANDLE CompletionPort,
     LPOVERLAPPED_ENTRY lpCompletionPortEntries,
     ULONG ulCount,
     PULONG ulNumEntriesRemoved,
@@ -3883,7 +3885,7 @@ EXPORT BOOL _GetQueuedCompletionStatusEx(HANDLE CompletionPort,
 }
 
 //** FIREFOX (130.0.1) ** //
-EXPORT BOOL _CopyFileExW(LPCWSTR lpExistingFileName,
+EXPORT BOOL WINAPI _CopyFileExW(LPCWSTR lpExistingFileName,
     LPCWSTR lpNewFileName,
     LPPROGRESS_ROUTINE lpProgressRoutine,
     LPVOID lpData,
@@ -3893,7 +3895,7 @@ EXPORT BOOL _CopyFileExW(LPCWSTR lpExistingFileName,
     return ::CopyFileExW(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
 }
 
-EXPORT BOOL _GetApplicationRestartSettings(HANDLE hProcess,
+EXPORT BOOL WINAPI _GetApplicationRestartSettings(HANDLE hProcess,
     PWSTR pwzCommandline,
     PDWORD pcchSize,
     PDWORD pdwFlags) {
@@ -3902,7 +3904,7 @@ EXPORT BOOL _GetApplicationRestartSettings(HANDLE hProcess,
 }
 
 
-EXPORT int _GetDateFormatA(LCID             Locale,
+EXPORT int WINAPI _GetDateFormatA(LCID             Locale,
     DWORD            dwFlags,
     const SYSTEMTIME* lpDate,
     LPCSTR           lpFormat,
@@ -3911,22 +3913,22 @@ EXPORT int _GetDateFormatA(LCID             Locale,
     return ::GetDateFormatA(Locale, dwFlags, lpDate, lpFormat, lpDateStr, cchDate);
 }
 
-EXPORT int _GetProcessIdOfThread(HANDLE Thread) {
+EXPORT int WINAPI _GetProcessIdOfThread(HANDLE Thread) {
     return ::GetProcessIdOfThread(Thread);
 }
 
-EXPORT LANGID _GetSystemDefaultLangID(void) {
+EXPORT LANGID WINAPI _GetSystemDefaultLangID(void) {
     return ::GetSystemDefaultLangID();
 }
 
-EXPORT LANGID _GetTempFileNameW(LPCWSTR lpPathName,
+EXPORT LANGID WINAPI _GetTempFileNameW(LPCWSTR lpPathName,
     LPCWSTR lpPrefixString,
     UINT uUnique,
     LPWSTR lpTempFileName) {
     return ::GetTempFileNameW(lpPathName, lpPrefixString, uUnique, lpTempFileName);
 }
 
-EXPORT int _GetTimeFormatA(LCID Locale,
+EXPORT int WINAPI _GetTimeFormatA(LCID Locale,
     DWORD dwFlags,
     CONST SYSTEMTIME* lpTime,
     LPCSTR lpFormat,
@@ -3935,23 +3937,23 @@ EXPORT int _GetTimeFormatA(LCID Locale,
     return ::GetTimeFormatA(Locale, dwFlags, lpTime, lpFormat, lpTimeStr, cchTime);
 }
 
-EXPORT DWORD _GetVersion(VOID) {
+EXPORT DWORD WINAPI _GetVersion(VOID) {
     return ::GetVersion();
 }
 
-EXPORT HGLOBAL _GlobalReAlloc(HGLOBAL hMem,
+EXPORT HGLOBAL WINAPI _GlobalReAlloc(HGLOBAL hMem,
     SIZE_T dwBytes,
     UINT uFlags) {
     return ::GlobalReAlloc(hMem, dwBytes, uFlags);
 }
 
-EXPORT HANDLE _OpenMutexA(DWORD dwDesiredAccess,
+EXPORT HANDLE WINAPI _OpenMutexA(DWORD dwDesiredAccess,
     BOOL bInheritHandle,
     LPCSTR lpName) {
     return ::OpenMutexA(dwDesiredAccess, bInheritHandle, lpName);
 }
 
-EXPORT BOOL _ReplaceFileA(LPCSTR lpReplacedFileName,
+EXPORT BOOL WINAPI _ReplaceFileA(LPCSTR lpReplacedFileName,
     LPCSTR lpReplacementFileName,
     LPCSTR lpBackupFileName,
     DWORD    dwReplaceFlags,
@@ -3960,22 +3962,22 @@ EXPORT BOOL _ReplaceFileA(LPCSTR lpReplacedFileName,
     return ::ReplaceFileA(lpReplacedFileName, lpReplacementFileName, lpBackupFileName, dwReplaceFlags, lpExclude, lpReserved);
 }
 
-EXPORT BOOL _SetThreadErrorMode(DWORD dwNewMode,
+EXPORT BOOL WINAPI _SetThreadErrorMode(DWORD dwNewMode,
     LPDWORD lpOldMode) {
     return ::SetThreadErrorMode(dwNewMode, lpOldMode);
 }
 
-EXPORT DWORD _SetThreadIdealProcessor(HANDLE hThread,
+EXPORT DWORD WINAPI _SetThreadIdealProcessor(HANDLE hThread,
     DWORD dwIdealProcessor) {
     return ::SetThreadIdealProcessor(hThread, dwIdealProcessor);
 }
 
-EXPORT BOOL _VirtualUnlock(LPVOID lpAddress,
+EXPORT BOOL WINAPI _VirtualUnlock(LPVOID lpAddress,
     SIZE_T dwSize) {
     return ::VirtualUnlock(lpAddress, dwSize);
 }
 
-EXPORT BOOL _ReadFileEx(HANDLE hFile,
+EXPORT BOOL WINAPI _ReadFileEx(HANDLE hFile,
     LPVOID lpBuffer,
     DWORD nNumberOfBytesToRead,
     LPOVERLAPPED lpOverlapped,
@@ -3983,7 +3985,7 @@ EXPORT BOOL _ReadFileEx(HANDLE hFile,
     return ::ReadFileEx(hFile, lpBuffer, nNumberOfBytesToRead, lpOverlapped, lpCompletionRoutine);
 }
 
-EXPORT BOOL _WriteFileEx(HANDLE hFile,
+EXPORT BOOL WINAPI _WriteFileEx(HANDLE hFile,
     LPVOID lpBuffer,
     DWORD nNumberOfBytesToRead,
     LPOVERLAPPED lpOverlapped,
@@ -3991,12 +3993,12 @@ EXPORT BOOL _WriteFileEx(HANDLE hFile,
     return ::WriteFileEx(hFile, lpBuffer, nNumberOfBytesToRead, lpOverlapped, lpCompletionRoutine);
 }
 
-EXPORT LPSTR  _lstrcatA(LPSTR lpString1, // deprecated: annotation is as good as it gets
+EXPORT LPSTR  WINAPI _lstrcatA(LPSTR lpString1, // deprecated: annotation is as good as it gets
     LPCSTR lpString2) {
     return ::lstrcatA(lpString1, lpString2);
 }
 
-EXPORT LPWSTR  _lstrcatW(LPWSTR lpString1, // deprecated: annotation is as good as it gets
+EXPORT LPWSTR  WINAPI  _lstrcatW(LPWSTR lpString1, // deprecated: annotation is as good as it gets
     LPWSTR lpString2) {
     return ::lstrcatW(lpString1, lpString2);
 }
@@ -4060,3 +4062,4 @@ EXPORT int WINAPI _zz_LAST(LPCSTR lpString) {
 
 
 }
+

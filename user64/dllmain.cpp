@@ -1,6 +1,7 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023-2024
+﻿//[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG 
 //#define DEBUG_OUT 1
+
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -8,6 +9,7 @@ BOOL isdp = false;
 #pragma code_seg(push, ".text$000004")
 const TCHAR WIDE_USER32DLL[] = L"user32.dll";
 const TCHAR WIDE_PPROWDLL[] = L"powrprof.dll";
+const TCHAR WIDE_NTDLL[] = L"ntdll.dll";
 const char A_GPPI[] = "GetPointerPenInfo";
 const char A_GPT[] = "GetPointerType";
 const char A_RSRN[] = "RegisterSuspendResumeNotification";
@@ -23,6 +25,8 @@ const char A_RPDN[] = "RegisterPointerDeviceNotifications";
 const char A_STDC[] = "SetThreadDpiAwarenessContext";
 const char A_CSPD[] = "CreateSyntheticPointerDevice";
 const char A_ISPI[] = "InjectSyntheticPointerInput";
+const char A_GARS[] = "GetAutoRotationState";
+const char A_NUGARS[] = "NtUserGetAutoRotationState";
 #pragma code_seg(pop)
 
 //https://stackoverflow.com/questions/66161063/c-windows-api-how-to-retrieve-font-scaling-percentage-on-windows-10
@@ -38,6 +42,7 @@ const UINT standart_DPI_100_PERCENT = 96;
 // ----- ABSENT AP -----
 HMODULE pUser32;
 HMODULE pPPow;
+HMODULE pNtdll;
 
 typedef BOOL(WINAPI api_GetPointerPenInfo)(UINT32 pointerId,
    POINTER_PEN_INFO* penInfo);
@@ -76,6 +81,12 @@ typedef BOOL(WINAPI api_InjectSyntheticPointerInput)(HSYNTHETICPOINTERDEVICE dev
     const POINTER_TYPE_INFO* pointerInfo,
     UINT32                  count);
 
+typedef BOOL(WINAPI api_GetAutoRotationState)(PAR_STATE pState
+    );
+
+typedef BOOL(WINAPI api_NtUserGetAutoRotationState)(PAR_STATE pState
+    );
+
 api_GetPointerPenInfo* farproc_GetPointerPenInfo = 0;
 api_GetPointerType* farproc_GetPointerType = 0;
 api_RegisterSuspendResumeNotification* farproc_RegisterSuspendResumeNotification = 0;
@@ -91,6 +102,8 @@ api_RegisterPointerDeviceNotifications* farproc_RegisterPointerDeviceNotificatio
 api_SetThreadDpiAwarenessContext* farproc_SetThreadDpiAwarenessContext = 0;
 api_CreateSyntheticPointerDevice* farproc_CreateSyntheticPointerDevice = 0;
 api_InjectSyntheticPointerInput* farproc_InjectSyntheticPointerInput = 0;
+api_GetAutoRotationState* farproc_GetAutoRotationState = 0;
+api_NtUserGetAutoRotationState* farproc_NtUserGetAutoRotationState = 0;
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -110,9 +123,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         if (!pUser32)
         {
 
-            pUser32 = ::GetModuleHandle(WIDE_USER32DLL);
-            pPPow = ::GetModuleHandle(WIDE_PPROWDLL);
-            if (pUser32 && pPPow)
+            pUser32 = ::LoadLibrary(WIDE_USER32DLL);
+            pPPow = ::LoadLibrary(WIDE_PPROWDLL);
+            pNtdll = ::GetModuleHandle(WIDE_NTDLL);
+            if (pUser32 && pPPow && pNtdll)
             {
                 farproc_GetPointerPenInfo = (api_GetPointerPenInfo*)::GetProcAddress(pUser32, A_GPPI);
                 farproc_GetPointerType = (api_GetPointerType*)::GetProcAddress(pUser32, A_GPT);
@@ -130,6 +144,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                 //FFOX 130.0.1
                 farproc_CreateSyntheticPointerDevice = (api_CreateSyntheticPointerDevice*)::GetProcAddress(pPPow, A_CSPD);
                 farproc_InjectSyntheticPointerInput = (api_InjectSyntheticPointerInput*)::GetProcAddress(pPPow, A_ISPI);
+                //FFOX 135.0.0
+                farproc_GetAutoRotationState = (api_GetAutoRotationState*)::GetProcAddress(pUser32, A_GARS);
+                farproc_NtUserGetAutoRotationState = (api_NtUserGetAutoRotationState*)::GetProcAddress(pNtdll, A_GARS);
                 
             }//end if (pUser32 && pNtdll)
         }//end if (!pKernel32)
@@ -474,7 +491,7 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
         return farproc_RegisterPointerDeviceNotifications(window, notifyRange);
     }
 
-     EXPORT DPI_AWARENESS_CONTEXT  _SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT dpiContext){
+     EXPORT DPI_AWARENESS_CONTEXT WINAPI  _SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT dpiContext){
 #ifdef DEBUG_OUT
         if (isdp)
         {
@@ -501,7 +518,7 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
         return farproc_SetThreadDpiAwarenessContext(dpiContext);
     }
 
-     EXPORT HSYNTHETICPOINTERDEVICE  _CreateSyntheticPointerDevice(POINTER_INPUT_TYPE    pointerType,
+     EXPORT HSYNTHETICPOINTERDEVICE WINAPI _CreateSyntheticPointerDevice(POINTER_INPUT_TYPE    pointerType,
          ULONG                 maxCount,
          POINTER_FEEDBACK_MODE mode) {
 #ifdef DEBUG_OUT
@@ -523,7 +540,7 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
          return farproc_CreateSyntheticPointerDevice(pointerType, maxCount, mode);
      }
 
-     EXPORT BOOL  _InjectSyntheticPointerInput(HSYNTHETICPOINTERDEVICE device,
+     EXPORT  BOOL WINAPI _InjectSyntheticPointerInput(HSYNTHETICPOINTERDEVICE device,
          const POINTER_TYPE_INFO* pointerInfo,
          UINT32                  count) {
 #ifdef DEBUG_OUT
@@ -543,5 +560,33 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
              return NULL;
          }//end if (!farproc_DiscardVirtualMemory)
          return farproc_InjectSyntheticPointerInput(device, pointerInfo, count);
+     }
+
+     EXPORT BOOL WINAPI _GetAutoRotationState(PAR_STATE pState)
+     {
+#ifdef DEBUG_OUT
+         if (isdp)
+         {
+             WCHAR Buffer[1024];
+             wsprintf(Buffer, L"[%i] - farproc_GetAutoRotationState()", ::GetCurrentThreadId());
+             ::OutputDebugString(Buffer);
+         }//end if (isdp)
+#endif // DEBUG_OUT
+         if (!farproc_GetAutoRotationState)
+         {
+             if (farproc_NtUserGetAutoRotationState)
+                 return farproc_NtUserGetAutoRotationState(pState);
+
+            //windows 7
+             if (!pState)
+             {
+                 ::SetLastError(E_INVALIDARG);
+                 return FALSE;
+             }//end if (!pState)
+
+             *pState = AR_NOT_SUPPORTED;
+             return TRUE;
+         }
+         return farproc_GetAutoRotationState(pState);
      }
 }

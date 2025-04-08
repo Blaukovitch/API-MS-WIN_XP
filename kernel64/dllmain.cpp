@@ -1,4 +1,5 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2024
+//[80_PA] ELF, cracklab/exelab, 2023-2025
+
 
 // >>>>>>>>>> FLAG (debug options) <<<<<<<<<<<
 //#define DEBUG_OUT 1
@@ -13,6 +14,8 @@
 //#define MAIL 1
 //#define SPOOTIFY 1
 //#define FIREFOX 1
+//#define TRVIEW 1
+//#define MAILBIRD 1
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -43,9 +46,10 @@ const char A_OPIBFN[] = "OpenPackageInfoByFullName";
 const char A_GAUMI[] = "GetApplicationUserModelId";
 const char A_GCPFN[] = "GetCurrentPackageFullName";
 const char A_GPI[] = "GetProcessInformation";
+const char A_GSCSI[] = "GetSystemCpuSetInformation";
+const char A_NTQSIEX[] = "NtQuerySystemInformationEx";
 
-
-#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX)
+#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX) && !defined(TRVIEW) && !defined(MAILBIRD)
 const char PRIMARY_EXE[] = "chrome.exe";
 #endif
 
@@ -75,8 +79,16 @@ const char PRIMARY_EXE[] = "Spotify.exe";
 
 #ifdef FIREFOX
 const char PRIMARY_EXE[] = "firefox.exe";
+#include <combaseapi.h>
 #endif //FIREFOX
 
+#ifdef TRVIEW
+const char PRIMARY_EXE[] = "TradingView.exe";
+#endif //TRVIEW
+
+#ifdef MAILBIRD
+const char PRIMARY_EXE[] = "libcef.dll";
+#endif //MAILBIRD
 
 const char PRIMARY_EXE_Is_SANDBOXED_SA[] = "IsSandboxedProcess";
 const char SERVICE_QUERY_ADVAPI32_DLL[] = "ADVAPI32.DLL";
@@ -106,7 +118,7 @@ pool_I advapi32_pp[] = {
     {0, 0}
 };
 
-#define MAX_TABLE_SAFE 5
+#define MAX_TABLE_SAFE 15
 HANDLE hsafe_table[MAX_TABLE_SAFE];
 SIZE_T hsafe_table_COUNTER = 0;
 volatile size_t hfailed_safe_entrypoint = 0;
@@ -267,6 +279,14 @@ typedef BOOL(WINAPI api_GetProcessInformation)(HANDLE                    hProces
     LPVOID                    ProcessInformation,
     DWORD                     ProcessInformationSize);
 
+typedef BOOL(WINAPI api_GetSystemCpuSetInformation)(
+    PSYSTEM_CPU_SET_INFORMATION  Information,
+    ULONG                        BufferLength,
+    PULONG                       ReturnedLength,
+    HANDLE                       Process,
+    ULONG                        Flags
+);
+
 typedef int(WINAPI api_swprintf_s)(
 wchar_t* buffer, size_t sizeOfBuffer,
 const wchar_t* format, 
@@ -292,6 +312,8 @@ api_GetApplicationUserModelId* farproc_GetApplicationUserModelId = 0;
 api_GetCurrentPackageFullName* farproc_GetCurrentPackageFullName = 0;
 api_GetProcessInformation* farproc_GetProcessInformation = 0;
 chrome_IsSandboxedProcess* farproc_IsSandboxedProcess = 0;
+api_GetSystemCpuSetInformation* farproc_GetSystemCpuSetInformation = 0;
+api_NtQuerySystemInformationEx* farproc_NtQuerySystemInformationEx = 0;
 
 api_swprintf_s* farproc_wsprintf_s = 0;
 
@@ -312,6 +334,7 @@ BOOL DllMain( HMODULE hModule,
         isdp = ::IsDebuggerPresent();
          checkl_stop_option();
 #endif // DEBUG_OUT
+
          render_process = checkl_RENDER_opt();
       
         
@@ -336,11 +359,13 @@ BOOL DllMain( HMODULE hModule,
             farproc_OpenPackageInfoByFullName = (api_OpenPackageInfoByFullName*)::GetProcAddress(pKernel32, A_OPIBFN);
             farproc_GetCurrentPackageFullName = (api_GetCurrentPackageFullName*)::GetProcAddress(pKernel32, A_GCPFN);
             farproc_GetProcessInformation = (api_GetProcessInformation*)::GetProcAddress(pKernel32, A_GPI);
+            farproc_GetSystemCpuSetInformation = (api_GetSystemCpuSetInformation*)::GetProcAddress(pKernel32, A_GSCSI);
 
             farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
             farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
             farproc_NtQueryInformationToken = (api_NtQueryInformationToken*)::GetProcAddress(pNtdll, A_NTQIT);
             farproc_GetApplicationUserModelId = (api_GetApplicationUserModelId*)::GetProcAddress(pNtdll, A_GAUMI);
+            farproc_NtQuerySystemInformationEx = (api_NtQuerySystemInformationEx*)::GetProcAddress(pNtdll, A_NTQSIEX);
 #endif
             farproc_NtSetInformationThread = (api_NtSetInformationThread*)::GetProcAddress(pNtdll, A_NTSIT);
 
@@ -356,6 +381,11 @@ BOOL DllMain( HMODULE hModule,
             WLDP_preloader_MSEDGE();
 //#endif // EDGE
         }//end if (!pKernel32)
+
+#ifdef FIREFOX
+        ::CoInitialize(NULL);
+#endif //FIREFOX
+
         break; }
     case DLL_THREAD_ATTACH: {break;}
     case DLL_THREAD_DETACH:
@@ -412,18 +442,20 @@ BOOL checkl_stop_option()
     while (i--)
     {
         //papi
-        if (*cmdline++ != L'p')
+        if (*cmdline++ != L'r')
             continue;
 
-        if (cmdline[0] == L'p' && cmdline[1] == L'a' && cmdline[2] == L'p' && cmdline[3] == L'i')
+        if (cmdline[0] == L'e' && cmdline[1] == L'n' && cmdline[2] == L'd' && cmdline[3] == L'e')
 
         {
+            /*
             while (1)
             {
                 ::MessageBox(NULL, cmdline, NULL, MB_OK);
-                ::SwitchToThread();
+                ::SwitchToThread();   
             }
-              
+              */
+            ::Sleep(10000);
             return TRUE;
         }
     }//end while (i--)
@@ -1068,7 +1100,7 @@ DLL 	Kernel32.dll
     }
 
 
-   EXPORT LONG _GetApplicationUserModelId(HANDLE hProcess,
+   EXPORT LONG WINAPI _GetApplicationUserModelId(HANDLE hProcess,
         UINT32* applicationUserModelIdLength,
         PWSTR  applicationUserModelId
     ) {
@@ -1081,7 +1113,7 @@ DLL 	Kernel32.dll
             return ::farproc_GetApplicationUserModelId(hProcess, applicationUserModelIdLength, applicationUserModelId);
     }
 
-   EXPORT LONG _GetCurrentApplicationUserModelId(UINT32* applicationUserModelIdLength,
+   EXPORT LONG WINAPI _GetCurrentApplicationUserModelId(UINT32* applicationUserModelIdLength,
        PWSTR  applicationUserModelId
    ) {
        LONG result = APPMODEL_ERROR_NO_APPLICATION;
@@ -1167,7 +1199,7 @@ DLL 	Kernel32.dll
             return ::farproc_GetSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime);
     }
 
-    EXPORT LONG _GetPackageApplicationIds(PACKAGE_INFO_REFERENCE packageInfoReference,
+    EXPORT LONG WINAPI _GetPackageApplicationIds(PACKAGE_INFO_REFERENCE packageInfoReference,
         UINT32* bufferLength,
         BYTE* buffer,
         UINT32* count) {
@@ -1180,7 +1212,7 @@ DLL 	Kernel32.dll
             return ::farproc_GetPackageApplicationIds(packageInfoReference, bufferLength, buffer, count);
     }
 
-    EXPORT LONG _OpenPackageInfoByFullName(
+    EXPORT LONG WINAPI _OpenPackageInfoByFullName(
         PCWSTR                 packageFullName,
         const UINT32           reserved,
         PACKAGE_INFO_REFERENCE* packageInfoReference
@@ -1194,7 +1226,7 @@ DLL 	Kernel32.dll
             return ::farproc_OpenPackageInfoByFullName(packageFullName, reserved, packageInfoReference);
     }
 
-    EXPORT BOOL _GetProcessInformation(
+    EXPORT BOOL WINAPI _GetProcessInformation(
         HANDLE                    hProcess,
         PROCESS_INFORMATION_CLASS ProcessInformationClass,
         LPVOID                    ProcessInformation,
@@ -1369,7 +1401,7 @@ DLL 	Kernel32.dll
             0);
         if (SUCCEEDED(retq))
         {
-            v5 = (v18 - (unsigned __int64)v17) * Size;
+            v5 = (v18 - (unsigned _int64)v17) * Size;
             LODWORD(v9[0]) = (v18 - v17) * Size;
         LABEL_8:
             HIDWORD(v9[0]) = HIDWORD(v5);
@@ -1410,6 +1442,45 @@ DLL 	Kernel32.dll
        return 0;
     }
 #endif
+
+//void
+EXPORT BOOL WINAPI _QueryUnbiasedInterruptTimePrecise(
+        PULONGLONG lpUnbiasedInterruptTimePrecise
+    ) {
+    return ::QueryUnbiasedInterruptTime(lpUnbiasedInterruptTimePrecise);
+}
+
+EXPORT BOOL WINAPI _GetSystemCpuSetInformation(
+    PSYSTEM_CPU_SET_INFORMATION  Information,
+    ULONG                        BufferLength,
+    PULONG                       ReturnedLength,
+    HANDLE                       Process,
+    ULONG                        Flags
+) {
+
+    if (!farproc_GetSystemCpuSetInformation)
+    {
+        //windows 7
+        if (farproc_NtQuerySystemInformationEx)
+        {
+            if (Flags)
+            {
+                ::SetLastError(E_INVALIDARG);
+                return E_INVALIDARG;
+            }//end if (Flags)
+            HANDLE hProcess = Process;
+            NTSTATUS rt = farproc_NtQuerySystemInformationEx(SystemCPUSetInformation, &hProcess, sizeof(ULONG64), Information, BufferLength, ReturnedLength);
+            if(SUCCEEDED(rt))
+                return TRUE;
+            ::SetLastError(RtlNtStatusToDosError(rt));
+            return FALSE;
+        }
+        return ERROR_NOT_FOUND;
+    }
+    else
+        return farproc_GetSystemCpuSetInformation(Information, BufferLength, ReturnedLength, Process, Flags);
+}
+    
 
     
 EXPORT BOOL WINAPI _IsGPU_Process(LPWSTR cmdline)
@@ -1565,6 +1636,51 @@ void MPFLAT_preloader()
                     ((cmdline[7] == L'y') || (cmdline[7] == L'Y')) &&
 #endif
 
+#ifdef TRVIEW
+                    //TradingView.exe
+                    ((cmdline[0] == L't') || (cmdline[0] == L'T')) &&
+                    ((cmdline[1] == L'r') || (cmdline[1] == L'R')) &&
+                    ((cmdline[2] == L'a') || (cmdline[2] == L'A')) &&
+                    ((cmdline[3] == L'd') || (cmdline[3] == L'D')) &&
+                    ((cmdline[4] == L'i') || (cmdline[4] == L'I')) &&
+                    ((cmdline[5] == L'n') || (cmdline[5] == L'N')) &&
+                    ((cmdline[6] == L'g') || (cmdline[6] == L'G')) &&
+                    ((cmdline[7] == L'v') || (cmdline[7] == L'V')) &&
+                    ((cmdline[8] == L'i') || (cmdline[8] == L'I')) &&
+                    ((cmdline[9] == L'e') || (cmdline[9] == L'E')) &&
+                    ((cmdline[10] == L'w') || (cmdline[10] == L'W')) &&
+#endif
+
+#if defined(MAILBIRD)
+                        //CefSharp.BrowserSubprocess.exe
+                        ((cmdline[0] == L'c') || (cmdline[0] == L'C')) &&
+                        ((cmdline[1] == L'e') || (cmdline[1] == L'E')) &&
+                        ((cmdline[2] == L'f') || (cmdline[2] == L'F')) &&
+                        ((cmdline[3] == L's') || (cmdline[3] == L'S')) &&
+                        ((cmdline[4] == L'h') || (cmdline[4] == L'H')) &&
+                        ((cmdline[5] == L'a') || (cmdline[5] == L'A')) &&
+                        ((cmdline[6] == L'r') || (cmdline[6] == L'R')) &&
+                        ((cmdline[7] == L'p') || (cmdline[7] == L'P')) &&
+                        ((cmdline[8] == L'.') || (cmdline[8] == L'.')) &&
+                        ((cmdline[9] == L'b') || (cmdline[9] == L'B')) &&
+                        ((cmdline[10] == L'r') || (cmdline[10] == L'R')) &&
+                        ((cmdline[11] == L'o') || (cmdline[11] == L'O')) &&
+                        ((cmdline[12] == L'w') || (cmdline[12] == L'W')) &&
+                        ((cmdline[13] == L's') || (cmdline[13] == L'S')) &&
+                        ((cmdline[14] == L'e') || (cmdline[14] == L'E')) &&
+                        ((cmdline[15] == L'r') || (cmdline[15] == L'R')) &&
+                        ((cmdline[16] == L's') || (cmdline[16] == L'S')) &&
+                        ((cmdline[17] == L'u') || (cmdline[17] == L'U')) &&
+                        ((cmdline[18] == L'b') || (cmdline[18] == L'B')) &&
+                        ((cmdline[19] == L'p') || (cmdline[19] == L'P')) &&
+                        ((cmdline[20] == L'r') || (cmdline[20] == L'R')) &&
+                        ((cmdline[21] == L'o') || (cmdline[21] == L'O')) &&
+                        ((cmdline[22] == L'c') || (cmdline[22] == L'C')) &&
+                        ((cmdline[23] == L'e') || (cmdline[23] == L'E')) &&
+                        ((cmdline[24] == L's') || (cmdline[24] == L'S')) &&
+                        ((cmdline[25] == L's') || (cmdline[25] == L'S')) &&
+#endif
+
 #if  defined(BRAVE) || defined(OPERA)
                     ((cmdline[5] == L'.')) &&
                     ((cmdline[6] == L'e') || (cmdline[6] == L'E')) &&
@@ -1592,7 +1708,18 @@ void MPFLAT_preloader()
                     ((cmdline[10] == L'x') || (cmdline[7] == L'X')) &&
                     ((cmdline[11] == L'e') || (cmdline[8] == L'E'))
 #endif
-
+#if defined(TRVIEW)
+                            ((cmdline[11] == L'.')) &&
+                            ((cmdline[12] == L'e') || (cmdline[12] == L'E')) &&
+                            ((cmdline[13] == L'x') || (cmdline[13] == L'X')) &&
+                            ((cmdline[13] == L'e') || (cmdline[13] == L'E'))
+#endif
+#if defined(MAILBIRD)
+                        ((cmdline[26] == L'.')) &&
+                        ((cmdline[27] == L'e') || (cmdline[27] == L'E')) &&
+                        ((cmdline[28] == L'x') || (cmdline[28] == L'X')) &&
+                        ((cmdline[29] == L'e') || (cmdline[29] == L'E'))
+#endif
                     )
                     {
                     memcpy_s1(&path_copy[last_div_i], i * sizeof(WCHAR), WIDE_MPFLAT_386, sizeof(WIDE_MPFLAT_386));
@@ -1681,7 +1808,7 @@ void DDRAW_FontCase_Service_SANDBOX_hook()
     }//end    if (!farproc_IsSandboxedProcess)
 
     //SANDBOX!
-    //public: static bool __cdecl ClientSideConnection::StartFontCacheService(unsigned int)
+    //public: static bool _cdecl ClientSideConnection::StartFontCacheService(unsigned int)
     HMODULE dwrite_module = ::LoadLibrary(WIDE_DWRITE);
     if(dwrite_module)
     {
@@ -1742,6 +1869,7 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
     return SUCCESS_RET;
 }
 
+
 ///////
 EXPORT SC_HANDLE WINAPI hook_OpenServiceW(SC_HANDLE               hSCManager,
     LPCWSTR                lpServiceName,
@@ -1777,4 +1905,67 @@ EXPORT DWORD WINAPI hook_NotifyServiceStatusChangeW(SC_HANDLE               hSer
     return 0x1;
 }
 
+
+#ifdef _WIN64
+
+extern "C" EXPORT LPVOID WINAPI _VirtualAlloc(LPVOID lpAddress,
+    SIZE_T dwSize,
+    DWORD flAllocationType,
+    DWORD flProtect) {
+    //decrease size for WINDIWS 7 HUGE MEMORY BUG
+   // if ((flAllocationType == MEM_RESERVE) && dwSize == 0x000000800000000)
+     //   dwSize = 0x000000800000000;
+
+    return ::VirtualAlloc(lpAddress,
+        dwSize,
+        flAllocationType,
+        flProtect);
+}
+
+#else
+extern "C" EXPORT LPVOID WINAPI _VirtualAlloc(LPVOID lpAddress,
+    SIZE_T dwSize,
+    DWORD flAllocationType,
+    DWORD flProtect) {
+    return ::VirtualAlloc(lpAddress,
+        dwSize,
+        flAllocationType,
+        flProtect);
+}
+
+#endif // _WIN64
+
+
+/*  
+      std::u16string name;
+if (win::GetVersion() < win::Version::WIN8_1) {
+  // Windows < 8.1 ignores DACLs on certain unnamed objects (like shared
+  // sections). So, we generate a random name when we need to enforce
+  // read-only.
+  /*
+  Windows < 8.1 игнорирует DACL для некоторых неименованных объектов (like shared sections).
+  Поэтому мы генерируем случайное имя, когда нам нужно обеспечить только для чтения.
+  
+    uint64_t rand_values[4];
+    RandBytes(&rand_values, sizeof(rand_values));
+    name = ASCIIToUTF16(StringPrintf("CrSharedMem_%016llx%016llx%016llx%016llx",
+        rand_values[0], rand_values[1],
+        rand_values[2], rand_values[3]));
+    DCHECK(!name.empty());
+}
+*/
+
+
+    /*
+    EXPORT BOOL WINAPI _UpdateProcThreadAttribute(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
+        DWORD dwFlags,
+        DWORD_PTR Attribute,
+        PVOID lpValue,
+        SIZE_T cbSize,
+        PVOID lpPreviousValue,
+        PSIZE_T lpReturnSize) {
+}
+
+
+*/
 

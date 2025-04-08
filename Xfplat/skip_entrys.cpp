@@ -158,4 +158,23 @@ DLL 	Mfplat.dll
 			 pStm);
 		
 	}
+
+	EXPORT MFTIME WINAPI _MFGetSystemTime(IMFAttributes* pAttr,
+		DWORD dwOptions,
+		IStream* pStm)
+	{
+		return  ::MFGetSystemTime();
+
+	}
+
+	EXPORT HRESULT WINAPI _MFCancelWorkItem(MFWORKITEM_KEY Key)
+	{
+		return  ::MFCancelWorkItem(Key);
+	}
+
+	EXPORT HRESULT WINAPI _MFUnlockWorkQueue(DWORD dwWorkQueue)
+	{
+		return ::MFUnlockWorkQueue(dwWorkQueue);
+	}
+	
 }
