@@ -1,4 +1,6 @@
 //[80_PA] ELF, cracklab/exelab, 2023-2025
+//FLAG 
+
 
 
 // >>>>>>>>>> FLAG (debug options) <<<<<<<<<<<
@@ -16,6 +18,8 @@
 //#define FIREFOX 1
 //#define TRVIEW 1
 //#define MAILBIRD 1
+//#define DISCORD 1
+//#define CIMMCO_EDIT 1
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -48,8 +52,9 @@ const char A_GCPFN[] = "GetCurrentPackageFullName";
 const char A_GPI[] = "GetProcessInformation";
 const char A_GSCSI[] = "GetSystemCpuSetInformation";
 const char A_NTQSIEX[] = "NtQuerySystemInformationEx";
+const char A_GORE[] = "GetOverlappedResultEx";
 
-#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX) && !defined(TRVIEW) && !defined(MAILBIRD)
+#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX) && !defined(TRVIEW) && !defined(MAILBIRD) && !defined(DISCORD)
 const char PRIMARY_EXE[] = "chrome.exe";
 #endif
 
@@ -89,6 +94,11 @@ const char PRIMARY_EXE[] = "TradingView.exe";
 #ifdef MAILBIRD
 const char PRIMARY_EXE[] = "libcef.dll";
 #endif //MAILBIRD
+
+#ifdef DISCORD
+const char PRIMARY_EXE[] = "discord.exe";
+#endif // DISCORD
+
 
 const char PRIMARY_EXE_Is_SANDBOXED_SA[] = "IsSandboxedProcess";
 const char SERVICE_QUERY_ADVAPI32_DLL[] = "ADVAPI32.DLL";
@@ -287,6 +297,12 @@ typedef BOOL(WINAPI api_GetSystemCpuSetInformation)(
     ULONG                        Flags
 );
 
+typedef BOOL(WINAPI api_GetOverlappedResultEx)(HANDLE       hFile,
+    LPOVERLAPPED lpOverlapped,
+    LPDWORD      lpNumberOfBytesTransferred,
+    DWORD        dwMilliseconds,
+    BOOL         bAlertable);
+
 typedef int(WINAPI api_swprintf_s)(
 wchar_t* buffer, size_t sizeOfBuffer,
 const wchar_t* format, 
@@ -314,6 +330,7 @@ api_GetProcessInformation* farproc_GetProcessInformation = 0;
 chrome_IsSandboxedProcess* farproc_IsSandboxedProcess = 0;
 api_GetSystemCpuSetInformation* farproc_GetSystemCpuSetInformation = 0;
 api_NtQuerySystemInformationEx* farproc_NtQuerySystemInformationEx = 0;
+api_GetOverlappedResultEx* farproc_GetOverlappedResultEx = 0;
 
 api_swprintf_s* farproc_wsprintf_s = 0;
 
@@ -360,6 +377,7 @@ BOOL DllMain( HMODULE hModule,
             farproc_GetCurrentPackageFullName = (api_GetCurrentPackageFullName*)::GetProcAddress(pKernel32, A_GCPFN);
             farproc_GetProcessInformation = (api_GetProcessInformation*)::GetProcAddress(pKernel32, A_GPI);
             farproc_GetSystemCpuSetInformation = (api_GetSystemCpuSetInformation*)::GetProcAddress(pKernel32, A_GSCSI);
+            farproc_GetOverlappedResultEx = (api_GetOverlappedResultEx*)::GetProcAddress(pKernel32, A_GORE);
 
             farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
             farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
@@ -1480,7 +1498,68 @@ EXPORT BOOL WINAPI _GetSystemCpuSetInformation(
     else
         return farproc_GetSystemCpuSetInformation(Information, BufferLength, ReturnedLength, Process, Flags);
 }
+
+/*
+* 
+* DISCROD PATCH 
+$+2B629EC        | lea rcx,qword ptr ds:[14A08C866]                                               | 000000014A08C866:"ws2_32.dll" >> "kernel64.dll"
+$+2B629F3        | call qword ptr ds:[<GetModuleHandleA>]                                         |
+$+2B629F9        | test rax,rax                                                                   | 
+$+2B629FC        | je discord.142263A15                                                           |
+$+2B629FE        | lea rdx,qword ptr ds:[14A08C871]                                               | 000000014A08C871:"GetHostNameW"
+$+2B62A05        | mov rcx,rax                                                                    | 
+$+2B62A08        | call qword ptr ds:[<GetProcAddress>]                                           |
+$+2B62A0E        | mov qword ptr ds:[14A9B6AC0],rax                                               | 
+
+The GetHostNameW function retrieves the standard host name for the local computer as a Unicode string.
+Requirement 	Value
+Minimum supported client 	Windows 8.1, Windows 8 [desktop apps | UWP apps]
+Minimum supported server 	Windows Server 2012 [desktop apps | UWP apps]
+Target Platform 	Windows
+Header 	winsock2.h
+Library 	Ws2_32.lib
+DLL 	Ws2_32.dll
+*/
+#ifdef DISCORD
+//#include <winsock2.h>
+//#include <Ws2tcpip.h>
+//#pragma comment(lib, "Ws2_32.lib")
+constexpr auto WIDE_LOCALHOST = L"locahost";
+EXPORT int WINAPI _GetHostNameW(
+    PWSTR name,
+    int   namelen
+)
+{
+    DWORD lpnamelen = namelen;
+    if (!::GetComputerNameW(name, &lpnamelen))
+    {
+        if (namelen < wcslen(WIDE_LOCALHOST))
+            return WSAEFAULT;
+        _wcscpy(name, WIDE_LOCALHOST);
+    }//end if (!::GetComputerNameW(name, &lpnamelen))
+    return ERROR_SUCCESS;
+}
+
+
     
+#endif // DISCROD
+
+
+EXPORT BOOL WINAPI _GetOverlappedResultEx(HANDLE hFile,
+    LPOVERLAPPED lpOverlapped,
+    LPDWORD lpNumberOfBytesTransferred,
+    DWORD dwMilliseconds,
+    BOOL bAlertable)
+{
+    if (!farproc_GetOverlappedResultEx)
+    {
+        // Windows 7
+        ::SleepEx(dwMilliseconds, bAlertable);
+        return ::GetOverlappedResult(hFile, lpOverlapped, lpNumberOfBytesTransferred, FALSE);
+    }
+    else
+        return ::farproc_GetOverlappedResultEx(hFile, lpOverlapped, lpNumberOfBytesTransferred, dwMilliseconds, bAlertable);
+}
 
     
 EXPORT BOOL WINAPI _IsGPU_Process(LPWSTR cmdline)
@@ -1681,6 +1760,16 @@ void MPFLAT_preloader()
                         ((cmdline[25] == L's') || (cmdline[25] == L'S')) &&
 #endif
 
+#ifdef DISCORD
+                        ((cmdline[0] == L'd') || (cmdline[0] == L'D')) &&
+                        ((cmdline[1] == L'i') || (cmdline[1] == L'I')) &&
+                        ((cmdline[2] == L's') || (cmdline[2] == L'S')) &&
+                        ((cmdline[3] == L'c') || (cmdline[3] == L'C')) &&
+                        ((cmdline[4] == L'o') || (cmdline[4] == L'O')) &&
+                        ((cmdline[5] == L'r') || (cmdline[5] == L'R')) &&
+                        ((cmdline[6] == L'd') || (cmdline[6] == L'D')) &&
+#endif // DISCORD
+
 #if  defined(BRAVE) || defined(OPERA)
                     ((cmdline[5] == L'.')) &&
                     ((cmdline[6] == L'e') || (cmdline[6] == L'E')) &&
@@ -1720,6 +1809,14 @@ void MPFLAT_preloader()
                         ((cmdline[28] == L'x') || (cmdline[28] == L'X')) &&
                         ((cmdline[29] == L'e') || (cmdline[29] == L'E'))
 #endif
+
+#ifdef DISCORD
+                        ((cmdline[7] == L'.')) &&
+                        ((cmdline[8] == L'e') || (cmdline[8] == L'E')) &&
+                        ((cmdline[9] == L'x') || (cmdline[9] == L'X')) &&
+                        ((cmdline[10] == L'e') || (cmdline[10] == L'E'))
+#endif // DISCORD
+
                     )
                     {
                     memcpy_s1(&path_copy[last_div_i], i * sizeof(WCHAR), WIDE_MPFLAT_386, sizeof(WIDE_MPFLAT_386));

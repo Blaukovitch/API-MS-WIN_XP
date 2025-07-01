@@ -2268,3 +2268,4 @@ DLL 	User32.dll
 			return ::LockWindowUpdate(hWndLock);
 	}
 }
+

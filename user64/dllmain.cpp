@@ -27,6 +27,7 @@ const char A_CSPD[] = "CreateSyntheticPointerDevice";
 const char A_ISPI[] = "InjectSyntheticPointerInput";
 const char A_GARS[] = "GetAutoRotationState";
 const char A_NUGARS[] = "NtUserGetAutoRotationState";
+const char A_GPFTI[] = "GetPointerFrameTouchInfo";
 #pragma code_seg(pop)
 
 //https://stackoverflow.com/questions/66161063/c-windows-api-how-to-retrieve-font-scaling-percentage-on-windows-10
@@ -87,6 +88,12 @@ typedef BOOL(WINAPI api_GetAutoRotationState)(PAR_STATE pState
 typedef BOOL(WINAPI api_NtUserGetAutoRotationState)(PAR_STATE pState
     );
 
+typedef BOOL(WINAPI api_GetPointerFrameTouchInfo)(
+    UINT32             pointerId,
+    UINT32* pointerCount,
+    POINTER_TOUCH_INFO* touchInfo
+);
+
 api_GetPointerPenInfo* farproc_GetPointerPenInfo = 0;
 api_GetPointerType* farproc_GetPointerType = 0;
 api_RegisterSuspendResumeNotification* farproc_RegisterSuspendResumeNotification = 0;
@@ -104,6 +111,7 @@ api_CreateSyntheticPointerDevice* farproc_CreateSyntheticPointerDevice = 0;
 api_InjectSyntheticPointerInput* farproc_InjectSyntheticPointerInput = 0;
 api_GetAutoRotationState* farproc_GetAutoRotationState = 0;
 api_NtUserGetAutoRotationState* farproc_NtUserGetAutoRotationState = 0;
+api_GetPointerFrameTouchInfo* farproc_GetPointerFrameTouchInfo = 0;
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -147,6 +155,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                 //FFOX 135.0.0
                 farproc_GetAutoRotationState = (api_GetAutoRotationState*)::GetProcAddress(pUser32, A_GARS);
                 farproc_NtUserGetAutoRotationState = (api_NtUserGetAutoRotationState*)::GetProcAddress(pNtdll, A_GARS);
+                //FFFOX 137.0.2
+                farproc_GetPointerFrameTouchInfo = (api_GetPointerFrameTouchInfo*)::GetProcAddress(pUser32, A_GPFTI);
                 
             }//end if (pUser32 && pNtdll)
         }//end if (!pKernel32)
@@ -589,4 +599,45 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
          }
          return farproc_GetAutoRotationState(pState);
      }
+
+     EXPORT BOOL WINAPI _GetPointerFrameTouchInfo(
+         UINT32  pointerId,
+         UINT32* pointerCount,
+         POINTER_TOUCH_INFO* touchInfo)
+     {
+#ifdef DEBUG_OUT
+         if (isdp)
+         {
+             WCHAR Buffer[1024];
+             wsprintf(Buffer, L"[%i] - farproc_GetPointerFrameTouchInfo()", ::GetCurrentThreadId());
+             ::OutputDebugString(Buffer);
+         }//end if (isdp)
+
+#endif // DEBUG_OUT
+         
+             if (!farproc_GetPointerFrameTouchInfo)
+             {
+                 //Windows 7 
+                 if (!touchInfo)
+                 {
+                     ::SetLastError(E_INVALIDARG);
+                     return FALSE;
+                 }
+                 ::SetLastError(ERROR_NOT_SUPPORTED);
+                 return FALSE;
+             }
+         return farproc_GetPointerFrameTouchInfo(pointerId, pointerCount, touchInfo);
+     }
+
+     //chrome 137
+     EXPORT BOOL WINAPI _IsWindowArranged(HWND hwnd)
+     {
+         if (!IsWindow(hwnd))
+             ::SetLastError(ERROR_INVALID_HANDLE);
+         else
+             ::SetLastError(ERROR_SUCCESS);
+         return FALSE;
+     }
+
 }
+

@@ -2,7 +2,6 @@
 //FLAG 
 
 
-
 //379
 extern "C"
 {
@@ -3993,6 +3992,326 @@ EXPORT BOOL WINAPI _WriteFileEx(HANDLE hFile,
     return ::WriteFileEx(hFile, lpBuffer, nNumberOfBytesToRead, lpOverlapped, lpCompletionRoutine);
 }
 
+//???
+EXPORT void WINAPI _FreeLibraryWhenCallbackReturns(
+    PTP_CALLBACK_INSTANCE pci,
+    HMODULE               mod)
+{
+   return ::FreeLibraryWhenCallbackReturns(pci, mod);
+}
+
+EXPORT BOOL WINAPI _HeapQueryInformation(
+    HANDLE                 HeapHandle,
+    HEAP_INFORMATION_CLASS HeapInformationClass,
+    PVOID                  HeapInformation,
+    SIZE_T                 HeapInformationLength,
+    PSIZE_T                ReturnLength
+)
+{
+    return ::HeapQueryInformation(HeapHandle, HeapInformationClass, HeapInformation, HeapInformationLength, ReturnLength);
+}
+
+
+EXPORT HGLOBAL WINAPI _GlobalHandle(
+    LPCVOID pMem
+)
+{
+    return ::GlobalHandle(pMem);
+}
+
+EXPORT int WINAPI _GetGeoInfoA(
+    GEOID   Location,
+    GEOTYPE GeoType,
+    LPSTR   lpGeoData,
+    int     cchData,
+    LANGID  LangId
+) {
+    return ::GetGeoInfoA(Location, GeoType, lpGeoData, cchData, LangId);
+}
+
+
+EXPORT HANDLE WINAPI _CreateSemaphoreExW(
+    LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
+    LONG                  lInitialCount,
+    LONG                  lMaximumCount,
+    LPCWSTR               lpName,
+    DWORD                 dwFlags,
+    DWORD                 dwDesiredAccess
+) {
+    return ::CreateSemaphoreExW(lpSemaphoreAttributes, lInitialCount, lMaximumCount, lpName, dwFlags, dwDesiredAccess);
+}
+
+EXPORT HANDLE WINAPI _OpenSemaphoreW(
+    DWORD   dwDesiredAccess,
+    BOOL    bInheritHandle,
+    LPCWSTR lpName
+) {
+    return ::OpenSemaphoreW(dwDesiredAccess, bInheritHandle, lpName);
+}
+
+EXPORT HANDLE WINAPI _CreateMutexExW(
+    LPSECURITY_ATTRIBUTES lpMutexAttributes,
+    LPCWSTR               lpName,
+    DWORD                 dwFlags,
+    DWORD                 dwDesiredAccess
+) {
+   return ::CreateMutexExW(lpMutexAttributes, lpName, dwFlags, dwDesiredAccess);
+}
+
+EXPORT int WINAPI _MulDiv(
+    int nNumber,
+    int nNumerator,
+    int nDenominator
+){
+    return ::MulDiv(nNumber, nNumerator, nDenominator);
+}
+
+EXPORT BOOL WINAPI _IsDBCSLeadByte(
+    BYTE TestChar
+) {
+    return ::IsDBCSLeadByte(TestChar);
+}
+
+EXPORT HRSRC WINAPI _FindResourceExA(
+    HMODULE hModule,
+    LPCSTR  lpType,
+    LPCSTR  lpName,
+    WORD    wLanguage
+) {
+    return ::FindResourceExA(hModule, lpType, lpName, wLanguage);
+}
+
+//Discrod
+EXPORT BOOL WINAPI _NeedCurrentDirectoryForExePathW(LPCWSTR ExeName)
+{
+    return ::NeedCurrentDirectoryForExePathW(ExeName);
+}
+
+EXPORT BOOL WINAPI _GetTimeZoneInformationForYear(
+    USHORT                         wYear,
+    PDYNAMIC_TIME_ZONE_INFORMATION pdtzi,
+    LPTIME_ZONE_INFORMATION        ptzi
+) {
+
+    return ::GetTimeZoneInformationForYear(wYear, pdtzi, ptzi);
+}
+
+EXPORT BOOL WINAPI _MoveFileExA(
+    LPCSTR lpExistingFileName,
+    LPCSTR lpNewFileName,
+    DWORD  dwFlags
+)
+{
+    return ::MoveFileExA(lpExistingFileName, lpNewFileName, dwFlags);
+}
+
+//chrome 137
+EXPORT BOOL WINAPI _SetProcessPriorityBoost(HANDLE hProcess,
+    BOOL bDisablePriorityBoost){
+    return ::SetProcessPriorityBoost(hProcess, bDisablePriorityBoost);
+}
+
+//Firefox 140
+EXPORT BOOL WINAPI _GetProcessWorkingSetSize(
+    HANDLE  hProcess,
+    PSIZE_T lpMinimumWorkingSetSize,
+    PSIZE_T lpMaximumWorkingSetSize
+)
+{
+    return ::GetProcessWorkingSetSize(hProcess, lpMinimumWorkingSetSize, lpMaximumWorkingSetSize);
+}
+
+EXPORT BOOL WINAPI _SetProcessWorkingSetSize(
+    HANDLE hProcess,
+    SIZE_T dwMinimumWorkingSetSize,
+    SIZE_T dwMaximumWorkingSetSize
+) {
+    return ::SetProcessWorkingSetSize(hProcess, dwMinimumWorkingSetSize, dwMaximumWorkingSetSize);
+}
+
+EXPORT BOOL WINAPI _VirtualLock(
+    LPVOID lpAddress,
+    SIZE_T dwSize
+) {
+    return ::VirtualLock(lpAddress, dwSize);
+}
+
+//CIMCO EDIT
+EXPORT HRESULT WINAPI _WerRegisterFile(
+    PCWSTR                 pwzFile,
+    WER_REGISTER_FILE_TYPE regFileType,
+    DWORD                  dwFlags
+) {
+    return ::WerRegisterFile(pwzFile, regFileType, dwFlags);
+}
+
+EXPORT HRESULT WINAPI _SetThreadpoolStackInformation(
+    PTP_POOL ptpp,
+    PTP_POOL_STACK_INFORMATION ptpsi)
+{
+            return ::SetThreadpoolStackInformation(ptpp, ptpsi);
+}
+
+EXPORT PTP_TIMER WINAPI _CreateThreadpoolTimer(PTP_TIMER_CALLBACK pfnti,
+    PVOID pv,
+    PTP_CALLBACK_ENVIRON pcbe){
+    return ::CreateThreadpoolTimer(pfnti, pv, pcbe);
+}
+
+EXPORT VOID WINAPI _SetThreadpoolTimer(PTP_TIMER pti,
+    PFILETIME pftDueTime,
+    DWORD msPeriod,
+    DWORD msWindowLength) {
+    return ::SetThreadpoolTimer(pti, pftDueTime, msPeriod, msWindowLength);
+}
+
+EXPORT VOID WINAPI _WaitForThreadpoolTimerCallbacks(PTP_TIMER pti,
+    BOOL fCancelPendingCallbacks) {
+    return ::WaitForThreadpoolTimerCallbacks(pti, fCancelPendingCallbacks);
+}
+
+EXPORT VOID WINAPI _CloseThreadpoolTimer(PTP_TIMER pti) {
+    return ::CloseThreadpoolTimer(pti);
+}
+
+EXPORT PTP_IO WINAPI _CreateThreadpoolIo(HANDLE fl,
+    PTP_WIN32_IO_CALLBACK pfnio,
+    PVOID pv,
+    PTP_CALLBACK_ENVIRON pcbe) {
+    return ::CreateThreadpoolIo(fl, pfnio, pv, pcbe);
+}
+
+EXPORT VOID WINAPI _StartThreadpoolIo(PTP_IO pio) {
+    return ::StartThreadpoolIo(pio);
+}
+
+EXPORT VOID WINAPI _CancelThreadpoolIo(PTP_IO pio) {
+    return ::CancelThreadpoolIo(pio);
+}
+
+EXPORT VOID WINAPI _CloseThreadpoolIo(PTP_IO pio) {
+    return ::CloseThreadpoolIo(pio);
+}
+
+EXPORT BOOL WINAPI _TrySubmitThreadpoolCallback(PTP_SIMPLE_CALLBACK pfns,
+    PVOID pv,
+    PTP_CALLBACK_ENVIRON pcbe) {
+    return ::TrySubmitThreadpoolCallback(pfns, pv, pcbe);
+}
+
+EXPORT BOOL WINAPI _GetLocaleInfoA(LCID Locale,
+    LCTYPE LCType,
+    LPSTR lpLCData,
+    int cchData) {
+    return ::GetLocaleInfoA(Locale, LCType, lpLCData, cchData);
+}
+
+EXPORT UINT WINAPI _GetConsoleCP(VOID) {
+    return ::GetConsoleCP();
+}
+
+EXPORT UINT WINAPI _GetSystemWindowsDirectoryA(LPSTR lpBuffer,
+    UINT uSize) {
+    return ::GetSystemWindowsDirectoryA(lpBuffer, uSize);
+}
+
+EXPORT UINT WINAPI _SetFileAttributesA(LPCSTR lpFileName,
+    DWORD dwFileAttributes) {
+    return ::SetFileAttributesA(lpFileName, dwFileAttributes);
+}
+
+EXPORT BOOL WINAPI _MoveFileA(LPCSTR lpExistingFileName,
+    LPCSTR lpNewFileName) {
+    return ::MoveFileA(lpExistingFileName, lpNewFileName);
+}
+
+EXPORT BOOL WINAPI _CreateDirectoryA(LPCSTR lpPathName,
+    LPSECURITY_ATTRIBUTES lpSecurityAttributes) {
+    return ::CreateDirectoryA(lpPathName, lpSecurityAttributes);
+}
+
+EXPORT BOOL WINAPI _GetVolumeInformationByHandleW(HANDLE hFile,
+    LPWSTR lpVolumeNameBuffer,
+    DWORD nVolumeNameSize,
+    LPDWORD lpVolumeSerialNumber,
+    LPDWORD lpMaximumComponentLength,
+    LPDWORD lpFileSystemFlags,
+    LPWSTR lpFileSystemNameBuffer,
+    DWORD nFileSystemNameSize) {
+    return ::GetVolumeInformationByHandleW(hFile, lpVolumeNameBuffer,
+        nVolumeNameSize, lpVolumeSerialNumber, lpMaximumComponentLength, 
+        lpFileSystemFlags, lpFileSystemNameBuffer, nFileSystemNameSize);
+}
+#ifdef UNICODE
+#undef UNICODE
+EXPORT BOOL WINAPI _Module32First(HANDLE          hSnapshot,
+    LPMODULEENTRY32 lpme) {
+    return ::Module32First(hSnapshot, lpme);
+}
+
+EXPORT BOOL WINAPI _Module32Next(HANDLE          hSnapshot,
+    LPMODULEENTRY32 lpme) {
+    return ::Module32Next(hSnapshot, lpme);
+}
+#define UNICODE
+#endif // UNICODE
+
+EXPORT SIZE_T WINAPI _GetLargePageMinimum(VOID) {
+    return ::GetLargePageMinimum();
+}
+
+EXPORT BOOL WINAPI _GetFileAttributesExA(LPCSTR lpFileName,
+    GET_FILEEX_INFO_LEVELS fInfoLevelId,
+    LPVOID lpFileInformation) {
+    return ::GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation);
+}
+
+EXPORT BOOL WINAPI _ReadConsoleA(HANDLE hConsoleInput,
+    LPVOID lpBuffer,
+    DWORD nNumberOfCharsToRead,
+    LPDWORD lpNumberOfCharsRead,
+    PCONSOLE_READCONSOLE_CONTROL pInputControl) {
+    return ::ReadConsoleA(hConsoleInput, lpBuffer, nNumberOfCharsToRead, lpNumberOfCharsRead, pInputControl);
+}
+
+EXPORT BOOL WINAPI _GetCurrentDirectoryA(DWORD nBufferLength,
+    LPSTR lpBuffer) {
+    return ::GetCurrentDirectoryA(nBufferLength, lpBuffer);
+}
+
+EXPORT DWORD WINAPI _GetCompressedFileSizeA(LPCSTR lpFileName,
+    LPDWORD lpFileSizeHigh) {
+    return ::GetCompressedFileSizeA(lpFileName, lpFileSizeHigh);
+}
+
+EXPORT BOOL WINAPI _GetVolumeNameForVolumeMountPointA(LPCSTR lpszVolumeMountPoint,
+    LPSTR lpszVolumeName,
+    DWORD cchBufferLength) {
+    return ::GetVolumeNameForVolumeMountPointA(lpszVolumeMountPoint, lpszVolumeName, cchBufferLength);
+}
+
+EXPORT BOOL WINAPI _GetVolumePathNameA(LPCSTR lpszFileName,
+    LPSTR lpszVolumePathName,
+    DWORD cchBufferLength) {
+    return ::GetVolumePathNameA(lpszFileName, lpszVolumePathName, cchBufferLength);
+}
+
+EXPORT PTP_CLEANUP_GROUP WINAPI _CreateThreadpoolCleanupGroup(VOID) {
+    return ::CreateThreadpoolCleanupGroup();
+}
+
+EXPORT VOID WINAPI _CloseThreadpoolCleanupGroupMembers(PTP_CLEANUP_GROUP ptpcg,
+    BOOL fCancelPendingCallbacks,
+    PVOID pvCleanupContext) {
+    return ::CloseThreadpoolCleanupGroupMembers(ptpcg, fCancelPendingCallbacks, pvCleanupContext);
+}
+
+EXPORT VOID WINAPI _CloseThreadpoolCleanupGroup(PTP_CLEANUP_GROUP ptpcg) {
+    return ::CloseThreadpoolCleanupGroup(ptpcg);
+}
+
+
+//_LS
 EXPORT LPSTR  WINAPI _lstrcatA(LPSTR lpString1, // deprecated: annotation is as good as it gets
     LPCSTR lpString2) {
     return ::lstrcatA(lpString1, lpString2);
