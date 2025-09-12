@@ -1,5 +1,6 @@
 # API-MS-WIN_XP
-[![Download API-MS-WIN_XP](https://img.shields.io/sourceforge/dt/windowsxp.svg)](https://sourceforge.net/projects/windowsxp/files/latest/download)  
+[![Download API-MS-WIN_XP](https://img.shields.io/sourceforge/dt/windowsxp.svg)](https://sourceforge.net/projects/windowsxp/files/latest/download)
+[![Download API-MS-WIN_XP](https://img.shields.io/sourceforge/dm/windowsxp.svg)](https://sourceforge.net/projects/windowsxp/files/latest/download)  
 ## WARNING!
 First of all, it is necessary to have disassembling skills and knowledge of [**Microsoft Windows PE COFF executable file format**](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format). To edit .exe/.dll the import table (NT_IMPORT_TABLE) you will need tools like:
 * [**PETools**](https://github.com/petoolse/petools)
