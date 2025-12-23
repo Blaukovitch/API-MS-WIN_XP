@@ -1,6 +1,6 @@
 //[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG 
-
+#include "kernel64.h"
 
 //379
 extern "C"
@@ -2681,85 +2681,6 @@ EXPORT DWORD WINAPI _WTSGetActiveConsoleSessionId(VOID) {
     return ::WTSGetActiveConsoleSessionId();
 }
 
-typedef enum _PROCESSINFOCLASS_NATIVE
-{
- //       ProcessBasicInformation, // 0, q: PROCESS_BASIC_INFORMATION, PROCESS_EXTENDED_BASIC_INFORMATION
-             ProcessQuotaLimits, // qs: QUOTA_LIMITS, QUOTA_LIMITS_EX
-             ProcessIoCounters, // q: IO_COUNTERS
-             ProcessVmCounters, // q: VM_COUNTERS, VM_COUNTERS_EX, VM_COUNTERS_EX2
-             ProcessTimes, // q: KERNEL_USER_TIMES
-             ProcessBasePriority, // s: KPRIORITY
-             ProcessRaisePriority, // s: ULONG
- //            ProcessDebugPort, // q: HANDLE
-             ProcessExceptionPort, // s: HANDLE
-             ProcessAccessToken, // s: PROCESS_ACCESS_TOKEN
-             ProcessLdtInformation, // 10, qs: PROCESS_LDT_INFORMATION
-             ProcessLdtSize, // s: PROCESS_LDT_SIZE
-             ProcessDefaultHardErrorMode, // qs: ULONG
-             ProcessIoPortHandlers, // (kernel-mode only)
-             ProcessPooledUsageAndLimits, // q: POOLED_USAGE_AND_LIMITS
-             ProcessWorkingSetWatch, // q: PROCESS_WS_WATCH_INFORMATION[]; s: void
-             ProcessUserModeIOPL,
-             ProcessEnableAlignmentFaultFixup, // s: BOOLEAN
-             ProcessPriorityClass, // qs: PROCESS_PRIORITY_CLASS
-             ProcessWx86Information,
-             ProcessHandleCount, // 20, q: ULONG, PROCESS_HANDLE_INFORMATION
-             ProcessAffinityMask, // s: KAFFINITY
-             ProcessPriorityBoost, // qs: ULONG
-             ProcessDeviceMap, // qs: PROCESS_DEVICEMAP_INFORMATION, PROCESS_DEVICEMAP_INFORMATION_EX
-             ProcessSessionInformation, // q: PROCESS_SESSION_INFORMATION
-             ProcessForegroundInformation, // s: PROCESS_FOREGROUND_BACKGROUND
- //            ProcessWow64Information, // q: ULONG_PTR
- //            ProcessImageFileName, // q: UNICODE_STRING
-             ProcessLUIDDeviceMapsEnabled, // q: ULONG
-//             ProcessBreakOnTermination, // qs: ULONG
-             ProcessDebugObjectHandle, // 30, q: HANDLE
-             ProcessDebugFlags, // qs: ULONG
-             ProcessHandleTracing, // q: PROCESS_HANDLE_TRACING_QUERY; s: size 0 disables, otherwise enables
-             ProcessIoPriority, // qs: ULONG
-             ProcessExecuteFlags, // qs: ULONG
-             ProcessResourceManagement,
-             ProcessCookie, // q: ULONG
-             ProcessImageInformation, // q: SECTION_IMAGE_INFORMATION
-             ProcessCycleTime, // q: PROCESS_CYCLE_TIME_INFORMATION // since VISTA
-             ProcessPagePriority, // q: ULONG
-             ProcessInstrumentationCallback, // 40
-             ProcessThreadStackAllocation, // s: PROCESS_STACK_ALLOCATION_INFORMATION, PROCESS_STACK_ALLOCATION_INFORMATION_EX
-             ProcessWorkingSetWatchEx, // q: PROCESS_WS_WATCH_INFORMATION_EX[]
-             ProcessImageFileNameWin32, // q: UNICODE_STRING
-             ProcessImageFileMapping, // q: HANDLE (input)
-             ProcessAffinityUpdateMode, // qs: PROCESS_AFFINITY_UPDATE_MODE
-             ProcessMemoryAllocationMode, // qs: PROCESS_MEMORY_ALLOCATION_MODE
-             ProcessGroupInformation, // q: USHORT[]
-             ProcessTokenVirtualizationEnabled, // s: ULONG
-             ProcessConsoleHostProcess, // q: ULONG_PTR
-             ProcessWindowInformation, // 50, q: PROCESS_WINDOW_INFORMATION
-             ProcessHandleInformation, // q: PROCESS_HANDLE_SNAPSHOT_INFORMATION // since WIN8
-             ProcessMitigationPolicy, // s: PROCESS_MITIGATION_POLICY_INFORMATION
-             ProcessDynamicFunctionTableInformation,
-             ProcessHandleCheckingMode,
-             ProcessKeepAliveCount, // q: PROCESS_KEEPALIVE_COUNT_INFORMATION
-             ProcessRevokeFileHandles, // s: PROCESS_REVOKE_FILE_HANDLES_INFORMATION
-             ProcessWorkingSetControl, // s: PROCESS_WORKING_SET_CONTROL
-             ProcessHandleTable, // since WINBLUE
-             ProcessCheckStackExtentsMode,
-             ProcessCommandLineInformation, // 60, q: UNICODE_STRING
-             ProcessProtectionInformation, // q: PS_PROTECTION
-             ProcessMemoryExhaustion, // PROCESS_MEMORY_EXHAUSTION_INFO // since THRESHOLD
-             ProcessFaultInformation, // PROCESS_FAULT_INFORMATION
-             ProcessTelemetryIdInformation, // PROCESS_TELEMETRY_ID_INFORMATION
-             ProcessCommitReleaseInformation, // PROCESS_COMMIT_RELEASE_INFORMATION
-             ProcessDefaultCpuSetsInformation,
-             ProcessAllowedCpuSetsInformation,
-             ProcessReserved1Information,
-             ProcessReserved2Information,
-            ProcessSubsystemProcess, // 70
-        ProcessJobMemoryInformation, // PROCESS_JOB_MEMORY_INFO
-        MaxProcessInfoClass
-        } PROCESSINFOCLASS_NATIVE;
-
-///////////////
-
 /*
 Минимальная версия клиента 	Windows Vista [классические приложения | Приложения UWP]
 Минимальная версия сервера 	Windows Server 2003 [классические приложения | Приложения UWP]
@@ -3699,7 +3620,7 @@ EXPORT USHORT WINAPI _QueryDepthSList(PSLIST_HEADER ListHead)
     return  ::QueryDepthSList(ListHead);
 }
 
-EXPORT USHORT WINAPI _QueryDosDeviceA(LPCSTR lpDeviceName,
+EXPORT DWORD WINAPI _QueryDosDeviceA(LPCSTR lpDeviceName,
     LPSTR lpTargetPath,
     DWORD ucchMax) {
     return ::QueryDosDeviceA(lpDeviceName, lpTargetPath, ucchMax);
@@ -3894,7 +3815,7 @@ EXPORT BOOL WINAPI _CopyFileExW(LPCWSTR lpExistingFileName,
     return ::CopyFileExW(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
 }
 
-EXPORT BOOL WINAPI _GetApplicationRestartSettings(HANDLE hProcess,
+EXPORT HRESULT WINAPI _GetApplicationRestartSettings(HANDLE hProcess,
     PWSTR pwzCommandline,
     PDWORD pcchSize,
     PDWORD pdwFlags) {
@@ -4145,7 +4066,7 @@ EXPORT HRESULT WINAPI _WerRegisterFile(
     return ::WerRegisterFile(pwzFile, regFileType, dwFlags);
 }
 
-EXPORT HRESULT WINAPI _SetThreadpoolStackInformation(
+EXPORT BOOL WINAPI _SetThreadpoolStackInformation(
     PTP_POOL ptpp,
     PTP_POOL_STACK_INFORMATION ptpsi)
 {
@@ -4310,6 +4231,207 @@ EXPORT VOID WINAPI _CloseThreadpoolCleanupGroup(PTP_CLEANUP_GROUP ptpcg) {
     return ::CloseThreadpoolCleanupGroup(ptpcg);
 }
 
+#ifdef WIN32
+
+EXPORT LONG WINAPI _InterlockedExchange(LONG volatile* Target, LONG Value)
+{
+    return ::InterlockedExchange(Target, Value);
+}
+
+EXPORT LONG WINAPI _InterlockedIncrement(LONG volatile* Addend)
+{
+    return ::InterlockedIncrement(Addend);
+}
+
+EXPORT LONG WINAPI _InterlockedDecrement(LONG volatile* Addend)
+{
+    return ::InterlockedDecrement(Addend);
+}
+
+EXPORT LONG WINAPI _InterlockedCompareExchange(
+    LONG volatile* Destination,
+    LONG          ExChange,
+    LONG          Comperand
+) {
+
+    return ::InterlockedCompareExchange(Destination, ExChange, Comperand);
+}
+#endif // _86
+
+
+EXPORT BOOL WINAPI _SetCurrentDirectoryA(LPCSTR lpPathName) {
+    return ::SetCurrentDirectoryA(lpPathName);
+}
+
+EXPORT BOOL WINAPI _RemoveDirectoryA(LPCSTR lpPathName) {
+    return ::RemoveDirectoryA(lpPathName);
+}
+
+EXPORT VOID WINAPI _GetStartupInfoA(LPSTARTUPINFOA lpStartupInfo) {
+    return ::GetStartupInfoA(lpStartupInfo);
+}
+
+#ifdef UNICODE
+#undef GetEnvironmentStrings
+EXPORT LPCH WINAPI _GetEnvironmentStrings(VOID) {
+    return ::GetEnvironmentStrings();
+}
+#endif
+
+EXPORT BOOL WINAPI _GetVolumeInformationA(LPCSTR lpRootPathName,
+    LPSTR lpVolumeNameBuffer,
+    DWORD nVolumeNameSize,
+    LPDWORD lpVolumeSerialNumber,
+    LPDWORD lpMaximumComponentLength,
+    LPDWORD lpFileSystemFlags,
+    LPSTR lpFileSystemNameBuffer,
+    DWORD nFileSystemNameSize) {
+        return ::GetVolumeInformationA(lpRootPathName, lpVolumeNameBuffer, nVolumeNameSize, 
+            lpVolumeSerialNumber, lpMaximumComponentLength, lpFileSystemFlags, 
+            lpFileSystemNameBuffer, nFileSystemNameSize);
+}
+
+EXPORT BOOL WINAPI _FreeEnvironmentStringsA(LPCH penv) {
+    return ::FreeEnvironmentStringsA(penv);
+}
+
+EXPORT DWORD WINAPI _GetPrivateProfileStringA(LPCSTR lpAppName,
+    LPCSTR lpKeyName,
+    LPCSTR lpDefault,
+    LPSTR lpReturnedString,
+    DWORD nSize,
+    LPCSTR lpFileName) {
+    return ::GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
+}
+
+EXPORT BOOL WINAPI _GetComputerNameA(LPSTR lpBuffer,
+    LPDWORD nSize) {
+    return ::GetComputerNameA(lpBuffer, nSize);
+}
+
+EXPORT BOOL WINAPI _CopyFileA(LPCSTR lpExistingFileName,
+    LPCSTR lpNewFileName,
+    BOOL bFailIfExists) {
+    return ::CopyFileA(lpExistingFileName, lpNewFileName, bFailIfExists);
+}
+
+EXPORT BOOL WINAPI _MoveFileA(LPCSTR lpExistingFileName,
+    LPCSTR lpNewFileName) {
+    return ::MoveFileA(lpExistingFileName, lpNewFileName);
+}
+
+
+
+EXPORT BOOL WINAPI _EnumDateFormatsExEx(DATEFMT_ENUMPROCEXEX lpDateFmtEnumProcExEx,
+    LPCWSTR lpLocaleName,
+    DWORD dwFlags,
+    LPARAM lParam)
+{
+    return ::EnumDateFormatsExEx(lpDateFmtEnumProcExEx, lpLocaleName, dwFlags, lParam);
+}
+
+EXPORT BOOL WINAPI _EnumTimeFormatsEx(TIMEFMT_ENUMPROCEX lpTimeFmtEnumProcEx,
+    LPCWSTR lpLocaleName,
+    DWORD dwFlags,
+    LPARAM lParam)
+{
+    return ::EnumTimeFormatsEx(lpTimeFmtEnumProcEx, lpLocaleName, dwFlags, lParam);
+}
+
+EXPORT BOOL WINAPI _IsValidLocaleName(LPCWSTR lpLocaleName)
+{
+    return ::IsValidLocaleName(lpLocaleName);
+}
+
+EXPORT BOOL WINAPI _Thread32First(HANDLE hSnapshot,
+    LPTHREADENTRY32 lpte)
+{
+    return ::Thread32First(hSnapshot, lpte);
+}
+
+EXPORT BOOL WINAPI _Thread32Next(HANDLE hSnapshot,
+    LPTHREADENTRY32 lpte)
+{
+    return ::Thread32Next(hSnapshot, lpte);
+}
+
+EXPORT BOOL WINAPI _WriteConsoleA(HANDLE hConsoleOutput,
+    CONST VOID* lpBuffer,
+    DWORD nNumberOfCharsToWrite,
+    LPDWORD lpNumberOfCharsWritten,
+    LPVOID lpReserved)
+{
+    return ::WriteConsoleA(hConsoleOutput, lpBuffer, nNumberOfCharsToWrite, lpNumberOfCharsWritten, lpReserved);
+}
+
+EXPORT DWORD WINAPI _K32GetModuleBaseNameA(HANDLE hProcess,
+    HMODULE hModule,
+    LPSTR lpBaseName,
+    DWORD nSize) {
+    return ::K32GetModuleBaseNameA(hProcess, hModule, lpBaseName, nSize);
+}
+
+EXPORT BOOL WINAPI _CreateTimerQueueTimer(PHANDLE phNewTimer,
+    HANDLE TimerQueue,
+    WAITORTIMERCALLBACK Callback,
+    PVOID Parameter,
+    DWORD DueTime,
+    DWORD Period,
+    ULONG Flags) {
+    return ::CreateTimerQueueTimer(phNewTimer, TimerQueue, Callback, Parameter, DueTime, Period, Flags);
+}
+
+EXPORT BOOL WINAPI _DeleteTimerQueueTimer(HANDLE TimerQueue,
+    HANDLE Timer,
+    HANDLE CompletionEvent){
+    return ::DeleteTimerQueueTimer(TimerQueue, Timer, CompletionEvent);
+}
+
+EXPORT BOOL WINAPI _DeleteTimerQueueEx(HANDLE TimerQueue,
+    HANDLE CompletionEvent) {
+    return ::DeleteTimerQueueEx(TimerQueue, CompletionEvent);
+}
+
+EXPORT HANDLE WINAPI _CreateTimerQueue(VOID) {
+    return ::_CreateTimerQueue();
+}
+
+EXPORT BOOL WINAPI _IsBadReadPtr(CONST VOID* lp,
+    UINT_PTR ucb) {
+    return ::IsBadReadPtr(lp, ucb);
+}
+
+EXPORT BOOL WINAPI _IsBadReadPtr(HANDLE hFile,
+    LPOVERLAPPED lpOverlapped,
+    LPDWORD lpNumberOfBytesTransferred,
+    DWORD dwMilliseconds,
+    BOOL bAlertable) {
+    return ::GetOverlappedResultEx(hFile, lpOverlapped, lpNumberOfBytesTransferred, dwMilliseconds, bAlertable);
+}
+
+#ifdef _WIN64
+EXPORT BOOL WINAPI _RtlInstallFunctionTableCallback(DWORD64 TableIdentifier,
+    DWORD64 BaseAddress,
+    DWORD Length,
+    PGET_RUNTIME_FUNCTION_CALLBACK Callback,
+    PVOID Context,
+    PCWSTR OutOfProcessCallbackDll) {
+    return ::RtlInstallFunctionTableCallback(TableIdentifier, BaseAddress, Length, Callback, Context, OutOfProcessCallbackDll);
+}
+#endif // _WIN64
+
+EXPORT VOID WINAPI _GlobalMemoryStatus(LPMEMORYSTATUS lpBuffer) {
+    return ::GlobalMemoryStatus(lpBuffer);
+}
+
+EXPORT BOOL WINAPI _GetDiskFreeSpaceExA(LPCSTR lpDirectoryName,
+    PULARGE_INTEGER lpFreeBytesAvailableToCaller,
+    PULARGE_INTEGER lpTotalNumberOfBytes,
+    PULARGE_INTEGER lpTotalNumberOfFreeBytes) {
+    return ::GetDiskFreeSpaceExA(lpDirectoryName, lpFreeBytesAvailableToCaller, lpTotalNumberOfBytes, lpTotalNumberOfFreeBytes);
+}
+
+
 
 //_LS
 EXPORT LPSTR  WINAPI _lstrcatA(LPSTR lpString1, // deprecated: annotation is as good as it gets
@@ -4370,15 +4492,26 @@ EXPORT LPWSTR WINAPI _lstrcpynW(LPWSTR lpString1,
     return  ::lstrcpynW(lpString1, lpString2, iMaxLength);
 }
 
+EXPORT LPSTR WINAPI _lstrcpyA(LPSTR lpString1, // deprecated: annotation is as good as it gets
+    LPCSTR lpString2) {
+    return ::lstrcpyA(lpString1, lpString2);
+}
+
+EXPORT LPSTR WINAPI _lstrcpynA(LPSTR lpString1,
+    LPCSTR lpString2,
+    int iMaxLength) {
+    return ::lstrcpynA(lpString1, lpString2, iMaxLength);
+}
+
+
+
 ///////
 
 EXPORT int WINAPI _zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz_LAST(LPCSTR lpString) {
     return 0x386;
 }
-EXPORT int WINAPI _zz_LAST(LPCSTR lpString) {
-    return 0x386;
-}
 
 
 }
+
 

@@ -1,7 +1,11 @@
 //[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG 
+#pragma comment(linker, "/ENTRY:DllMain")
+#pragma comment(lib, "ntdll.lib")
 
+#define WIN32_LEAN_AND_MEAN  
 
+#include "kernel64.h"
 
 // >>>>>>>>>> FLAG (debug options) <<<<<<<<<<<
 //#define DEBUG_OUT 1
@@ -20,6 +24,7 @@
 //#define MAILBIRD 1
 //#define DISCORD 1
 //#define CIMMCO_EDIT 1
+
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -119,24 +124,61 @@ extern "C" void DDRAW_FontCase_Service_SANDBOX_hook();
 extern "C" void WLDP_preloader_MSEDGE();
 extern "C" UINT Fill_fail_safe_CFMAPPING_Handle();
 
-pool_I advapi32_pp[] = {
-    {"OpenServiceW", (size_t)hook_OpenServiceW},
-    {"CloseServiceHandle",(size_t)hook_CloseServiceHandle },
-    {"OpenSCManagerW",(size_t)hook_OpenSCManagerW  },
-    {"StartServiceW", (size_t)hook_StartServiceW},
-    {"NotifyServiceStatusChangeW", (size_t)hook_NotifyServiceStatusChangeW},
-    {0, 0}
-};
 
-#define MAX_TABLE_SAFE 15
+///////
+
+    EXPORT SC_HANDLE WINAPI hook_OpenServiceW(SC_HANDLE               hSCManager,
+        LPCWSTR                lpServiceName,
+        DWORD                   dwDesiredAccess)
+    {
+        return (SC_HANDLE)0x386;
+    }
+
+
+    EXPORT BOOL  WINAPI hook_CloseServiceHandle(SC_HANDLE   hSCObject)
+    {
+        return TRUE;
+    }
+
+    EXPORT SC_HANDLE WINAPI hook_OpenSCManagerW(LPCWSTR                lpMachineName,
+        LPCWSTR                lpDatabaseName,
+        DWORD                   dwDesiredAccess)
+    {
+        return (SC_HANDLE)0x386;
+    }
+
+    EXPORT BOOL WINAPI hook_StartServiceW(SC_HANDLE            hService,
+        DWORD                dwNumServiceArgs,
+        LPCWSTR* lpServiceArgVectors)
+    {
+        return TRUE;
+    }
+
+    EXPORT DWORD WINAPI hook_NotifyServiceStatusChangeW(SC_HANDLE               hService,
+        DWORD                   dwNotifyMask,
+        PSERVICE_NOTIFYW        pNotifyBuffer)
+    {
+        return 0x1;
+    }
+
+
+    pool_I advapi32_pp[] = {
+        {"OpenServiceW", (size_t)hook_OpenServiceW},
+        {"CloseServiceHandle",(size_t)hook_CloseServiceHandle },
+        {"OpenSCManagerW",(size_t)hook_OpenSCManagerW  },
+        {"StartServiceW", (size_t)hook_StartServiceW},
+        {"NotifyServiceStatusChangeW", (size_t)hook_NotifyServiceStatusChangeW},
+        {0, 0}
+    };
+
+constexpr auto MAX_TABLE_SAFE = 15;
 HANDLE hsafe_table[MAX_TABLE_SAFE];
 SIZE_T hsafe_table_COUNTER = 0;
 volatile size_t hfailed_safe_entrypoint = 0;
 CRITICAL_SECTION csec_fail_safe;
 
-static NTSTATUS QueryAppMemoryInformation(HANDLE ProcessHandle, APP_MEMORY_INFORMATION* pMemPI);
 
-#define STATUS_ERROR_PROCESS_NOT_IN_JOB 0xC00001AE
+constexpr auto STATUS_ERROR_PROCESS_NOT_IN_JOB = 0xC00001AE;
 
 typedef struct _PROCESS_JOB_MEMORY_INFO
 {
@@ -329,7 +371,6 @@ api_GetCurrentPackageFullName* farproc_GetCurrentPackageFullName = 0;
 api_GetProcessInformation* farproc_GetProcessInformation = 0;
 chrome_IsSandboxedProcess* farproc_IsSandboxedProcess = 0;
 api_GetSystemCpuSetInformation* farproc_GetSystemCpuSetInformation = 0;
-api_NtQuerySystemInformationEx* farproc_NtQuerySystemInformationEx = 0;
 api_GetOverlappedResultEx* farproc_GetOverlappedResultEx = 0;
 
 api_swprintf_s* farproc_wsprintf_s = 0;
@@ -355,50 +396,51 @@ BOOL DllMain( HMODULE hModule,
          render_process = checkl_RENDER_opt();
       
         
-        if (!pKernel32)
-        {
-     
-        pKernel32 = ::GetModuleHandle(WIDE_KERNEL32DLL);
-        pNtdll = ::GetModuleHandle(WIDE_NTDLLDLL);
-        
+         if (!pKernel32)
+         {
+             pKernel32 = ::GetModuleHandle(WIDE_KERNEL32DLL);
+             pNtdll = ::GetModuleHandle(WIDE_NTDLLDLL);
+             if (pKernel32 && pNtdll)
+             {
 #ifndef COMPATIBLE10_7_MODE
-            farproc_DiscardVirtualMemory = (api_DiscardVirtualMemory*)::GetProcAddress(pKernel32, A_DVM);
-            farproc_PrefetchVirtualMemory = (api_PrefetchVirtualMemory*)::GetProcAddress(pKernel32, A_PVM);
-            farproc_SetThreadInformation = (api_SetThreadInformation*)::GetProcAddress(pKernel32, A_STI);
-            farproc_GetFirmwareType = (api_GetFirmwareType*)::GetProcAddress(pKernel32, A_GFT);
-            farproc_GetProcessMitigationPolicy = (api_GetProcessMitigationPolicy*)::GetProcAddress(pKernel32, A_GPMP);
-            farproc_SetProcessMitigationPolicy = (api_SetProcessMitigationPolicy*)::GetProcAddress(pKernel32, A_SPMP);
-            farproc_SetProcessInformation = (api_SetProcessInformation*)::GetProcAddress(pKernel32, A_SPI);
-            farproc_GetPackageFamilyName = (api_GetPackageFamilyName*)::GetProcAddress(pKernel32, A_GPFN);
-            farproc_Wow64GetThreadContext = (api_Wow64GetThreadContext*)::GetProcAddress(pKernel32, A_W64GTC);
-            farproc_GetSystemTimePreciseAsFileTime = (api_GetSystemTimePreciseAsFileTime*)::GetProcAddress(pKernel32, A_GSTPAFT);
-            farproc_GetPackageApplicationIds = (api_GetPackageApplicationIds*)::GetProcAddress(pKernel32, A_GPAI);
-            farproc_OpenPackageInfoByFullName = (api_OpenPackageInfoByFullName*)::GetProcAddress(pKernel32, A_OPIBFN);
-            farproc_GetCurrentPackageFullName = (api_GetCurrentPackageFullName*)::GetProcAddress(pKernel32, A_GCPFN);
-            farproc_GetProcessInformation = (api_GetProcessInformation*)::GetProcAddress(pKernel32, A_GPI);
-            farproc_GetSystemCpuSetInformation = (api_GetSystemCpuSetInformation*)::GetProcAddress(pKernel32, A_GSCSI);
-            farproc_GetOverlappedResultEx = (api_GetOverlappedResultEx*)::GetProcAddress(pKernel32, A_GORE);
+                 farproc_DiscardVirtualMemory = (api_DiscardVirtualMemory*)::GetProcAddress(pKernel32, A_DVM);
+                 farproc_PrefetchVirtualMemory = (api_PrefetchVirtualMemory*)::GetProcAddress(pKernel32, A_PVM);
+                 farproc_SetThreadInformation = (api_SetThreadInformation*)::GetProcAddress(pKernel32, A_STI);
+                 farproc_GetFirmwareType = (api_GetFirmwareType*)::GetProcAddress(pKernel32, A_GFT);
+                 farproc_GetProcessMitigationPolicy = (api_GetProcessMitigationPolicy*)::GetProcAddress(pKernel32, A_GPMP);
+                 farproc_SetProcessMitigationPolicy = (api_SetProcessMitigationPolicy*)::GetProcAddress(pKernel32, A_SPMP);
+                 farproc_SetProcessInformation = (api_SetProcessInformation*)::GetProcAddress(pKernel32, A_SPI);
+                 farproc_GetPackageFamilyName = (api_GetPackageFamilyName*)::GetProcAddress(pKernel32, A_GPFN);
+                 farproc_Wow64GetThreadContext = (api_Wow64GetThreadContext*)::GetProcAddress(pKernel32, A_W64GTC);
+                 farproc_GetSystemTimePreciseAsFileTime = (api_GetSystemTimePreciseAsFileTime*)::GetProcAddress(pKernel32, A_GSTPAFT);
+                 farproc_GetPackageApplicationIds = (api_GetPackageApplicationIds*)::GetProcAddress(pKernel32, A_GPAI);
+                 farproc_OpenPackageInfoByFullName = (api_OpenPackageInfoByFullName*)::GetProcAddress(pKernel32, A_OPIBFN);
+                 farproc_GetCurrentPackageFullName = (api_GetCurrentPackageFullName*)::GetProcAddress(pKernel32, A_GCPFN);
+                 farproc_GetProcessInformation = (api_GetProcessInformation*)::GetProcAddress(pKernel32, A_GPI);
+                 farproc_GetSystemCpuSetInformation = (api_GetSystemCpuSetInformation*)::GetProcAddress(pKernel32, A_GSCSI);
+                 farproc_GetOverlappedResultEx = (api_GetOverlappedResultEx*)::GetProcAddress(pKernel32, A_GORE);
 
-            farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
-            farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
-            farproc_NtQueryInformationToken = (api_NtQueryInformationToken*)::GetProcAddress(pNtdll, A_NTQIT);
-            farproc_GetApplicationUserModelId = (api_GetApplicationUserModelId*)::GetProcAddress(pNtdll, A_GAUMI);
-            farproc_NtQuerySystemInformationEx = (api_NtQuerySystemInformationEx*)::GetProcAddress(pNtdll, A_NTQSIEX);
+                 farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
+                 farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
+                 farproc_NtQueryInformationToken = (api_NtQueryInformationToken*)::GetProcAddress(pNtdll, A_NTQIT);
+                 farproc_GetApplicationUserModelId = (api_GetApplicationUserModelId*)::GetProcAddress(pNtdll, A_GAUMI);
+                 //farproc_NtQuerySystemInformationEx = (api_NtQuerySystemInformationEx*)::GetProcAddress(pNtdll, A_NTQSIEX);
 #endif
-            farproc_NtSetInformationThread = (api_NtSetInformationThread*)::GetProcAddress(pNtdll, A_NTSIT);
+                 farproc_NtSetInformationThread = (api_NtSetInformationThread*)::GetProcAddress(pNtdll, A_NTSIT);
 
 
-            //GPU SANDBOX preload (without \System32\ && \SysWOW64\)
-            MPFLAT_preloader();
-            //DirectX DRAW SANDBOX (Windows 7)
-            DDRAW_FontCase_Service_SANDBOX_hook();
-            //for PRINTER_PREVIEW HANDLE - SANDBOX
-            hsafe_table_COUNTER = Fill_fail_safe_CFMAPPING_Handle();
-//#ifdef EDGE
-            //WLDP
-            WLDP_preloader_MSEDGE();
-//#endif // EDGE
-        }//end if (!pKernel32)
+                 //GPU SANDBOX preload (without \System32\ && \SysWOW64\)
+                 MPFLAT_preloader();
+                 //DirectX DRAW SANDBOX (Windows 7)
+                 DDRAW_FontCase_Service_SANDBOX_hook();
+                 //for PRINTER_PREVIEW HANDLE - SANDBOX
+                 hsafe_table_COUNTER = Fill_fail_safe_CFMAPPING_Handle();
+                 //#ifdef EDGE
+                             //WLDP
+                 WLDP_preloader_MSEDGE();
+                 //#endif // EDGE
+             }//end if (!pKernel32)
+         }//end pKernel32 && pNtdll
 
 #ifdef FIREFOX
         ::CoInitialize(NULL);
@@ -482,6 +524,8 @@ BOOL checkl_stop_option()
 
 extern "C"
 {
+
+
     /*
       std::u16string name;
   if (win::GetVersion() < win::Version::WIN8_1) {
@@ -524,7 +568,7 @@ extern "C"
                     lpName);
 
                 //need use FAIL SAFE table?
-                if (FAILED(reta))
+                if (!reta)
                 {
 
                     //FAIL SAFE table is FILL?!
@@ -668,15 +712,15 @@ extern "C"
             {
             case ThreadMemoryPriority:
             {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ProcessSessionInformation, pThreadInformation, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessSessionInformation, pThreadInformation, ThreadInformationSize);
             }//end case ThreadMemoryPriority
             case ThreadAbsoluteCpuPriority:
             {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ProcessForegroundInformation, pThreadInformation, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessForegroundInformation, pThreadInformation, ThreadInformationSize);
             }//end  case ThreadAbsoluteCpuPriority:
             case ThreadDynamicCodePolicy:
             {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ProcessWorkingSetWatchEx, pThreadInformation, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessWorkingSetWatchEx, pThreadInformation, ThreadInformationSize);
             }//end  case ThreadDynamicCodePolicy:
 
             case ThreadInformationClassMax:
@@ -696,7 +740,7 @@ extern "C"
 
                 THREAD_POWER_THROTTLING_STATE thread_info = { 1, pThreadInformation->ControlMask, pThreadInformation->StateMask };
 
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)(0x31 | 0x20), &thread_info, ThreadInformationSize);
+                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)(0x31 | 0x20), &thread_info, ThreadInformationSize);
 
             }//end  case ThreadDynamicCodePolicy:
 
@@ -896,33 +940,33 @@ extern "C"
                 return FALSE;
 
             //Windows 7
-            LPCONTEXT pctx = 0;
-            BOOL gth = ::GetThreadContext(hThread, pctx);
+            CONTEXT pctx;
+            BOOL gth = ::GetThreadContext(hThread, &pctx);
             if (gth)
             {
                 //ctx flag
-                lpContext->ContextFlags = pctx->ContextFlags;
+                lpContext->ContextFlags = pctx.ContextFlags;
 
                 //hw bp
-                lpContext->Dr0 = pctx->Dr0;
-                lpContext->Dr1 = pctx->Dr1;
-                lpContext->Dr2 = pctx->Dr2;
-                lpContext->Dr3 = pctx->Dr3;
-                lpContext->Dr6 = pctx->Dr6;
-                lpContext->Dr7 = pctx->Dr7;
+                lpContext->Dr0 = static_cast<DWORD>(pctx.Dr0);
+                lpContext->Dr1 = static_cast<DWORD>(pctx.Dr1);
+                lpContext->Dr2 = static_cast<DWORD>(pctx.Dr2);
+                lpContext->Dr3 = static_cast<DWORD>(pctx.Dr3);
+                lpContext->Dr6 = static_cast<DWORD>(pctx.Dr6);
+                lpContext->Dr7 = static_cast<DWORD>(pctx.Dr7);
 
                 //commmon cpu
 #ifdef _AMD64_
 
-                lpContext->Eax = pctx->Rax;
-                lpContext->Ecx = pctx->Rcx;
-                lpContext->Edx = pctx->Rdx;
-                lpContext->Ebx = pctx->Rbx;
-                lpContext->Edi = pctx->Rsi;
-                lpContext->Esi = pctx->Rdi;
-                lpContext->Esp = pctx->Rsp;
-                lpContext->Ebp = pctx->Rbp;
-                lpContext->Eip = pctx->Rip;
+                lpContext->Eax = static_cast<DWORD>(pctx.Rax);
+                lpContext->Ecx = static_cast<DWORD>(pctx.Rcx);
+                lpContext->Edx = static_cast<DWORD>(pctx.Rdx);
+                lpContext->Ebx = static_cast<DWORD>(pctx.Rbx);
+                lpContext->Edi = static_cast<DWORD>(pctx.Rsi);
+                lpContext->Esi = static_cast<DWORD>(pctx.Rdi);
+                lpContext->Esp = static_cast<DWORD>(pctx.Rsp);
+                lpContext->Ebp = static_cast<DWORD>(pctx.Rbp);
+                lpContext->Eip = static_cast<DWORD>(pctx.Rip);
 #else
                 lpContext->Eax = pctx->Eax;
                 lpContext->Ecx = pctx->Ecx;
@@ -936,24 +980,24 @@ extern "C"
 #endif // _AMD64_
 
                 //EFL
-                lpContext->EFlags = pctx->EFlags;
+                lpContext->EFlags = pctx.EFlags;
 
                 //seg regs
-                lpContext->SegCs = pctx->SegCs;
-                lpContext->SegGs = pctx->SegGs;
-                lpContext->SegFs = pctx->SegFs;
-                lpContext->SegEs = pctx->SegEs;
-                lpContext->SegDs = pctx->SegDs;
+                lpContext->SegCs = pctx.SegCs;
+                lpContext->SegGs = pctx.SegGs;
+                lpContext->SegFs = pctx.SegFs;
+                lpContext->SegEs = pctx.SegEs;
+                lpContext->SegDs = pctx.SegDs;
 #ifdef _AMD64_
                 //FPU 80387 /XMM )
-                lpContext->FloatSave.ControlWord = pctx->FltSave.ControlWord;
-                lpContext->FloatSave.DataOffset = pctx->FltSave.DataOffset;
-                lpContext->FloatSave.DataSelector = pctx->FltSave.DataSelector;
-                lpContext->FloatSave.ErrorOffset = pctx->FltSave.ErrorOffset;
-                lpContext->FloatSave.ErrorSelector = pctx->FltSave.ErrorSelector;
-                lpContext->FloatSave.StatusWord = pctx->FltSave.StatusWord;
-                lpContext->FloatSave.TagWord = pctx->FltSave.TagWord;
-                memcpy(lpContext->FloatSave.RegisterArea, pctx->FltSave.FloatRegisters, WOW64_SIZE_OF_80387_REGISTERS); //???
+                lpContext->FloatSave.ControlWord = pctx.FltSave.ControlWord;
+                lpContext->FloatSave.DataOffset = pctx.FltSave.DataOffset;
+                lpContext->FloatSave.DataSelector = pctx.FltSave.DataSelector;
+                lpContext->FloatSave.ErrorOffset = pctx.FltSave.ErrorOffset;
+                lpContext->FloatSave.ErrorSelector = pctx.FltSave.ErrorSelector;
+                lpContext->FloatSave.StatusWord = pctx.FltSave.StatusWord;
+                lpContext->FloatSave.TagWord = pctx.FltSave.TagWord;
+                memcpy(lpContext->FloatSave.RegisterArea, pctx.FltSave.FloatRegisters, WOW64_SIZE_OF_80387_REGISTERS); //???
 #else
                 lpContext->FloatSave.ControlWord = pctx->FloatSave.ControlWord;
                 lpContext->FloatSave.DataOffset = pctx->FloatSave.DataOffset;
@@ -1037,7 +1081,7 @@ void ConvertProcessMitigationsToPolicy(MitigationFlags flags,
          return TRUE;
     }
 
-#define STATUS_BUFFER_TOO_SMALL 0xC0000023
+constexpr auto STATUS_BUFFER_TOO_SMALL = 0xC0000023;
     EXPORT LONG WINAPI _GetPackageFamilyName(HANDLE hProcess,
         UINT32* packageFamilyNameLength,
         PWSTR  packageFamilyName) {
@@ -1196,7 +1240,7 @@ DLL 	Kernel32.dll
         UNICODE_STRING WideThreadDescription = {0,0,0};
         ::RtlInitUnicodeString(&WideThreadDescription, lpThreadDescription);
         
-        farproc_NtSetInformationThread(hThread, (THREADINFOCLASS_NATIVE)ThreadNameInformation, &WideThreadDescription, sizeof(UNICODE_STRING));
+        farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ThreadNameInformation, &WideThreadDescription, sizeof(UNICODE_STRING));
 
         return ERROR_SUCCESS;
     }
@@ -1242,6 +1286,61 @@ DLL 	Kernel32.dll
         }
         else
             return ::farproc_OpenPackageInfoByFullName(packageFullName, reserved, packageInfoReference);
+    }
+
+
+    NTSTATUS QueryAppMemoryInformation(HANDLE ProcessHandle, APP_MEMORY_INFORMATION* pMemPI)
+    {
+        APP_MEMORY_INFORMATION local_pmi;
+        VM_COUNTERS_EX2 mem_counters;
+        PROCESS_JOB_MEMORY_INFO jmi;
+        UINT64 ava_commits = 0;
+
+        NTSTATUS retq = NtQueryInformationProcess(ProcessHandle, PROCESSINFOCLASS(ProcessJobMemoryInformation), &jmi, sizeof(_PROCESS_JOB_MEMORY_INFO), 0);
+        if (FAILED(retq) && retq != STATUS_ERROR_PROCESS_NOT_IN_JOB)
+            return retq;
+        ::ZeroMemory(&local_pmi,sizeof(APP_MEMORY_INFORMATION));
+        if (retq == STATUS_ERROR_PROCESS_NOT_IN_JOB)
+        {
+            retq = NtQueryInformationProcess(ProcessHandle, PROCESSINFOCLASS(ProcessVmCounters), &mem_counters, sizeof(VM_COUNTERS_EX2), 0);
+            if (FAILED(retq))
+                return retq;
+            local_pmi.PrivateCommitUsage = mem_counters.CountersEx.PeakPagefileUsage;
+            local_pmi.PeakPrivateCommitUsage = mem_counters.unknown1;
+            local_pmi.TotalCommitUsage = mem_counters.unknown2 + mem_counters.CountersEx.PeakPagefileUsage;
+        }
+        size_t commit_usage = jmi.PrivateCommitUsage + jmi.SharedCommitUsage;
+        local_pmi.PeakPrivateCommitUsage = jmi.PeakPrivateCommitUsage;
+        local_pmi.PrivateCommitUsage = jmi.PrivateCommitUsage;
+        local_pmi.TotalCommitUsage = commit_usage;
+        if (jmi.TotalCommitLimit)
+        {
+            ava_commits = (jmi.TotalCommitLimit - commit_usage) >> 32;
+            local_pmi.AvailableCommit = jmi.TotalCommitLimit - commit_usage;
+        }
+        if (jmi.PrivateCommitLimit)
+        {
+            ava_commits = (jmi.PrivateCommitLimit - jmi.PrivateCommitUsage) >> 32;
+            local_pmi.AvailableCommit = jmi.PrivateCommitLimit - jmi.PrivateCommitUsage;
+        }
+        /*
+        retq = NtQuerySystemInformation(
+            0x7b,
+            SystemInformation,
+            0x10u,
+            0);
+        if (SUCCEEDED(retq))
+        {
+            v5 = (v18 - (unsigned _int64)v17) * Size;
+            LODWORD(v9[0]) = (v18 - v17) * Size;
+        LABEL_8:
+            HIDWORD(v9[0]) = HIDWORD(v5);
+            InformationProcess = 0;
+            qmemcpy(v10, v9, 0x20u);
+        }
+        */
+        memcpy(pMemPI, &local_pmi, sizeof(APP_MEMORY_INFORMATION));
+        return retq;
     }
 
     EXPORT BOOL WINAPI _GetProcessInformation(
@@ -1377,59 +1476,6 @@ DLL 	Kernel32.dll
     }
 
 
-    NTSTATUS QueryAppMemoryInformation(HANDLE ProcessHandle, APP_MEMORY_INFORMATION* pMemPI)
-    {
-        APP_MEMORY_INFORMATION local_pmi;
-        VM_COUNTERS_EX2 mem_counters;
-        PROCESS_JOB_MEMORY_INFO jmi;
-        UINT64 ava_commits = 0;
-
-        NTSTATUS retq = NtQueryInformationProcess(ProcessHandle, PROCESSINFOCLASS(ProcessJobMemoryInformation), &jmi, sizeof(_PROCESS_JOB_MEMORY_INFO), 0);
-        if (FAILED(retq) && retq != STATUS_ERROR_PROCESS_NOT_IN_JOB)
-            return retq;
-        memset(&local_pmi, 0, sizeof(APP_MEMORY_INFORMATION));
-        if (retq == STATUS_ERROR_PROCESS_NOT_IN_JOB)
-        {
-            retq = NtQueryInformationProcess(ProcessHandle, PROCESSINFOCLASS(ProcessVmCounters), &mem_counters, sizeof(VM_COUNTERS_EX2), 0);
-            if (FAILED(retq))
-                return retq;
-            local_pmi.PrivateCommitUsage = mem_counters.CountersEx.PeakPagefileUsage;
-            local_pmi.PeakPrivateCommitUsage = mem_counters.unknown1;
-            local_pmi.TotalCommitUsage = mem_counters.unknown2 + mem_counters.CountersEx.PeakPagefileUsage;
-        }
-        int commit_usage = jmi.PrivateCommitUsage + jmi.SharedCommitUsage;
-        local_pmi.PeakPrivateCommitUsage = jmi.PeakPrivateCommitUsage;
-        local_pmi.PrivateCommitUsage = jmi.PrivateCommitUsage;
-        local_pmi.TotalCommitUsage = commit_usage;
-        if (jmi.TotalCommitLimit)
-        {
-            ava_commits = (jmi.TotalCommitLimit - commit_usage) >> 32;
-            local_pmi.AvailableCommit = jmi.TotalCommitLimit - commit_usage;
-        }
-        if (jmi.PrivateCommitLimit)
-        {
-            ava_commits = (jmi.PrivateCommitLimit - jmi.PrivateCommitUsage) >> 32;
-            local_pmi.AvailableCommit = jmi.PrivateCommitLimit - jmi.PrivateCommitUsage;
-        }
-        /*
-        retq = NtQuerySystemInformation(
-            0x7b,
-            SystemInformation,
-            0x10u,
-            0);
-        if (SUCCEEDED(retq))
-        {
-            v5 = (v18 - (unsigned _int64)v17) * Size;
-            LODWORD(v9[0]) = (v18 - v17) * Size;
-        LABEL_8:
-            HIDWORD(v9[0]) = HIDWORD(v5);
-            InformationProcess = 0;
-            qmemcpy(v10, v9, 0x20u);
-        }
-        */
-        memcpy(pMemPI, &local_pmi, sizeof(APP_MEMORY_INFORMATION));
-        return retq;
-}
    
 #ifdef SPOOTIFY
     //fix spooty kernel32.dll > redirected to > user32.dll
@@ -1479,21 +1525,21 @@ EXPORT BOOL WINAPI _GetSystemCpuSetInformation(
     if (!farproc_GetSystemCpuSetInformation)
     {
         //windows 7
-        if (farproc_NtQuerySystemInformationEx)
+    //  if (NtQuerySystemInformationEx)
         {
             if (Flags)
             {
                 ::SetLastError(E_INVALIDARG);
-                return E_INVALIDARG;
+                return FALSE;
             }//end if (Flags)
             HANDLE hProcess = Process;
-            NTSTATUS rt = farproc_NtQuerySystemInformationEx(SystemCPUSetInformation, &hProcess, sizeof(ULONG64), Information, BufferLength, ReturnedLength);
+            NTSTATUS rt = NtQuerySystemInformationEx((_SYSTEM_INFORMATION_CLASS)SystemCPUSetInformation, &hProcess, sizeof(ULONG64), Information, BufferLength, ReturnedLength);
             if(SUCCEEDED(rt))
                 return TRUE;
             ::SetLastError(RtlNtStatusToDosError(rt));
             return FALSE;
         }
-        return ERROR_NOT_FOUND;
+        return TRUE;
     }
     else
         return farproc_GetSystemCpuSetInformation(Information, BufferLength, ReturnedLength, Process, Flags);
@@ -1535,7 +1581,7 @@ EXPORT int WINAPI _GetHostNameW(
     {
         if (namelen < wcslen(WIDE_LOCALHOST))
             return WSAEFAULT;
-        _wcscpy(name, WIDE_LOCALHOST);
+        wcscpy(name, WIDE_LOCALHOST);
     }//end if (!::GetComputerNameW(name, &lpnamelen))
     return ERROR_SUCCESS;
 }
@@ -1582,6 +1628,36 @@ EXPORT BOOL WINAPI _IsGPU_Process(LPWSTR cmdline)
     return FALSE;
 }
 
+
+EXPORT BOOL _CompareObjectHandles(
+    HANDLE hFirstObjectHandle,
+    HANDLE hSecondObjectHandle
+)
+{
+    //TO DO: bad code cmp, need another
+    DWORD handle_FIRST = 0;
+    DWORD handle_NEXT = 0;
+    
+    BOOL faF = ::GetHandleInformation(hFirstObjectHandle, &handle_FIRST);
+    BOOL faN = ::GetHandleInformation(hSecondObjectHandle, &handle_NEXT);
+
+    if (faF && faN && (handle_FIRST == handle_NEXT))
+    {
+        BY_HANDLE_FILE_INFORMATION bhfi1 = { 0 };
+        BY_HANDLE_FILE_INFORMATION bhfi2 = { 0 };
+        if (::GetFileInformationByHandle(hFirstObjectHandle, &bhfi1) &&
+            ::GetFileInformationByHandle(hSecondObjectHandle, &bhfi2)) {
+            return ((bhfi1.nFileIndexHigh == bhfi2.nFileIndexHigh) &&
+                (bhfi1.nFileIndexLow == bhfi2.nFileIndexLow) &&
+                (bhfi1.dwVolumeSerialNumber == bhfi2.dwVolumeSerialNumber));
+        }
+        return FALSE;
+    }
+    return FALSE;
+}
+
+
+
 void MPFLAT_preloader()
 {
     LPWSTR cmdline = ::GetCommandLine();
@@ -1599,8 +1675,8 @@ void MPFLAT_preloader()
 
             if(path_copy)
             {
-                UINT ii = i;
-                UINT last_div_i = 0;
+                size_t ii = i;
+                size_t last_div_i = 0;
                 LPWSTR cmdline_local = cmdline;
 
                 while (--ii)
@@ -1938,6 +2014,7 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
         if (::InitializeAcl(&acl_0, sizeof(ACL), 2))
         {
             SECURITY_DESCRIPTOR sd;
+            ::ZeroMemory(&sd, sizeof(sd));
             if (::InitializeSecurityDescriptor(&sd, 1))
             {
                 if (::SetSecurityDescriptorDacl(&sd, TRUE, &acl_0, FALSE))
@@ -1952,7 +2029,7 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
                     wsprintf(name_buffer, WIDE_CH_SHARED_SECTION_NAME_TEMPLATE, randr());
                     HANDLE answer = ::CreateFileMappingW((HANDLE)-1, &sa, PAGE_READWRITE, masxsize_hight, 0L, name_buffer);
                     ::SwitchToThread();
-                    if (SUCCEEDED(answer))
+                    if (answer)
                     {
                         *hsafe_table_cursor++ = answer;
                         SUCCESS_RET++;
@@ -1966,41 +2043,6 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
     return SUCCESS_RET;
 }
 
-
-///////
-EXPORT SC_HANDLE WINAPI hook_OpenServiceW(SC_HANDLE               hSCManager,
-    LPCWSTR                lpServiceName,
-    DWORD                   dwDesiredAccess)
-{
-    return (SC_HANDLE)0x386;
-}
-
-
-EXPORT BOOL  WINAPI hook_CloseServiceHandle(SC_HANDLE   hSCObject)
-{
-    return TRUE;
-}
-
-EXPORT SC_HANDLE WINAPI hook_OpenSCManagerW(LPCWSTR                lpMachineName,
-    LPCWSTR                lpDatabaseName,
-    DWORD                   dwDesiredAccess)
-{
-    return (SC_HANDLE)0x386;
-}
-
-EXPORT BOOL WINAPI hook_StartServiceW(SC_HANDLE            hService,
-    DWORD                dwNumServiceArgs,
-    LPCWSTR* lpServiceArgVectors)
-{
-    return TRUE;
-}
-
-EXPORT DWORD WINAPI hook_NotifyServiceStatusChangeW(SC_HANDLE               hService,
-    DWORD                   dwNotifyMask,
-    PSERVICE_NOTIFYW        pNotifyBuffer)
-{
-    return 0x1;
-}
 
 
 #ifdef _WIN64
@@ -2065,4 +2107,5 @@ if (win::GetVersion() < win::Version::WIN8_1) {
 
 
 */
+
 

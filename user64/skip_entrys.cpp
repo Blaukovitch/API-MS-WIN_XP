@@ -1,6 +1,10 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG
+
 //214
+#include <Windows.h>
+           
+#define EXPORT __declspec( dllexport )
 extern "C"
 {
 	EXPORT BOOL WINAPI _AdjustWindowRectEx(LPRECT lpRect,
@@ -2267,5 +2271,20 @@ DLL 	User32.dll
 	{
 			return ::LockWindowUpdate(hWndLock);
 	}
+
+	EXPORT BOOL WINAPI _DrawIcon(HDC hDC,
+		int X,
+		int Y,
+		HICON hIcon)
+	{
+		return ::DrawIcon(hDC, X, Y, hIcon);
+	}
+
+	EXPORT BOOL WINAPI _PhysicalToLogicalPoint(HWND    hWnd,
+		LPPOINT lpPoint)
+	{
+		return PhysicalToLogicalPoint(hWnd, lpPoint);
+	}
 }
+
 

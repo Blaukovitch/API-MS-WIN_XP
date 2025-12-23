@@ -1,7 +1,9 @@
-﻿//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2025
 //FLAG 
 //#define DEBUG_OUT 1
-
+#include <Windows.h>
+#define WIN32_LEAN_AND_MEAN             
+#define EXPORT __declspec( dllexport )
 
 // ------ globals ------ 
 BOOL isdp = false;
@@ -28,6 +30,8 @@ const char A_ISPI[] = "InjectSyntheticPointerInput";
 const char A_GARS[] = "GetAutoRotationState";
 const char A_NUGARS[] = "NtUserGetAutoRotationState";
 const char A_GPFTI[] = "GetPointerFrameTouchInfo";
+const char A_SPDAC[] = "SetProcessDpiAwarenessContext";
+const char A_SPIFD[] = "SystemParametersInfoForDpi";
 #pragma code_seg(pop)
 
 //https://stackoverflow.com/questions/66161063/c-windows-api-how-to-retrieve-font-scaling-percentage-on-windows-10
@@ -94,6 +98,16 @@ typedef BOOL(WINAPI api_GetPointerFrameTouchInfo)(
     POINTER_TOUCH_INFO* touchInfo
 );
 
+typedef BOOL(WINAPI api_SetProcessDpiAwarenessContext)(DPI_AWARENESS_CONTEXT value);
+
+typedef BOOL(WINAPI api_SystemParametersInfoForDpi)(
+    UINT  uiAction,
+    UINT  uiParam,
+    PVOID pvParam,
+    UINT  fWinIni,
+    UINT  dpi
+    );
+
 api_GetPointerPenInfo* farproc_GetPointerPenInfo = 0;
 api_GetPointerType* farproc_GetPointerType = 0;
 api_RegisterSuspendResumeNotification* farproc_RegisterSuspendResumeNotification = 0;
@@ -112,6 +126,8 @@ api_InjectSyntheticPointerInput* farproc_InjectSyntheticPointerInput = 0;
 api_GetAutoRotationState* farproc_GetAutoRotationState = 0;
 api_NtUserGetAutoRotationState* farproc_NtUserGetAutoRotationState = 0;
 api_GetPointerFrameTouchInfo* farproc_GetPointerFrameTouchInfo = 0;
+api_SetProcessDpiAwarenessContext* farproc_SetProcessDpiAwarenessContext = 0;
+api_SystemParametersInfoForDpi* farproc_SystemParametersInfoForDpi = 0;
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -147,8 +163,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                 farproc_GetPointerDevices = (api_GetPointerDevices*)::GetProcAddress(pUser32, A_GPDS);
                 farproc_RegisterPointerDeviceNotifications = (api_RegisterPointerDeviceNotifications*)::GetProcAddress(pUser32, A_RPDN);
                 farproc_SetThreadDpiAwarenessContext = (api_SetThreadDpiAwarenessContext*)::GetProcAddress(pUser32, A_STDC);
-                farproc_SetThreadDpiAwarenessContext = (api_SetThreadDpiAwarenessContext*)::GetProcAddress(pUser32, A_STDC);
-                farproc_SetThreadDpiAwarenessContext = (api_SetThreadDpiAwarenessContext*)::GetProcAddress(pUser32, A_STDC);
+                farproc_SystemParametersInfoForDpi = (api_SystemParametersInfoForDpi*)::GetProcAddress(pUser32, A_SPIFD);
+               
                 //FFOX 130.0.1
                 farproc_CreateSyntheticPointerDevice = (api_CreateSyntheticPointerDevice*)::GetProcAddress(pPPow, A_CSPD);
                 farproc_InjectSyntheticPointerInput = (api_InjectSyntheticPointerInput*)::GetProcAddress(pPPow, A_ISPI);
@@ -157,6 +173,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                 farproc_NtUserGetAutoRotationState = (api_NtUserGetAutoRotationState*)::GetProcAddress(pNtdll, A_GARS);
                 //FFFOX 137.0.2
                 farproc_GetPointerFrameTouchInfo = (api_GetPointerFrameTouchInfo*)::GetProcAddress(pUser32, A_GPFTI);
+
+                //discord 0.1.9.7
+                farproc_SetProcessDpiAwarenessContext = (api_SetProcessDpiAwarenessContext*)::GetProcAddress(pUser32, A_SPDAC);
                 
             }//end if (pUser32 && pNtdll)
         }//end if (!pKernel32)
@@ -322,7 +341,7 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
             memset(&minfo, 0, sizeof(MONITORINFOEX));
             minfo.cbSize = sizeof(MONITORINFOEX);
 
-            HRESULT hr = ::GetMonitorInfo(hMon, &minfo);
+            BOOL hr = ::GetMonitorInfo(hMon, &minfo);
             if (!hr)
                 return standart_DPI_100_PERCENT;
 
@@ -366,7 +385,7 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
             memset(&minfo, 0, sizeof(MONITORINFOEX));
             minfo.cbSize = sizeof(MONITORINFOEX);
 
-            HRESULT hr = ::GetMonitorInfo(hMon, &minfo);
+            BOOL hr = ::GetMonitorInfo(hMon, &minfo);
             if (!hr)
                 return TRUE;
 
@@ -639,5 +658,97 @@ EXPORT UINT WINAPI _GetDpiForWindow(HWND hwnd)
          return FALSE;
      }
 
+     EXPORT BOOL WINAPI _SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT value)
+     {
+#ifdef DEBUG_OUT
+         if (isdp)
+         {
+             WCHAR Buffer[1024];
+             wsprintf(Buffer, L"[%i] - farproc_SetProcessDpiAwarenessContext(), %i", ::GetCurrentThreadId(), value);
+             ::OutputDebugString(Buffer);
+         }//end if (isdp)
+#endif // DEBUG_OUT
+
+         if (!farproc_SetProcessDpiAwarenessContext)
+         {
+             //Windows 7
+             if (!value)
+             {
+                 ::SetLastError(ERROR_INVALID_PARAMETER);
+                 return FALSE;
+             }//end if (!hwnd)
+
+             //no transform
+             //inputTransform->m;
+             ::SetLastError(ERROR_SUCCESS);
+             return NULL;
+         }
+         else
+             return farproc_SetProcessDpiAwarenessContext(value);
+     }
+
+     EXPORT BOOL WINAPI _SystemParametersInfoForDpi(UINT  uiAction,
+         UINT  uiParam,
+         PVOID pvParam,
+         UINT  fWinIni,
+         UINT  dpi)
+     {
+#ifdef DEBUG_OUT
+         if (isdp)
+         {
+             WCHAR Buffer[1024];
+             wsprintf(Buffer, L"[%i] - farproc_SystemParametersInfoForDpi(), %i %i %i", ::GetCurrentThreadId(), uiAction, uiParam, dpi);
+             ::OutputDebugString(Buffer);
+         }//end if (isdp)
+#endif // DEBUG_OUT
+
+         if (!farproc_SystemParametersInfoForDpi)
+         {
+             //Windows 7
+             if (!pvParam)
+             {
+                 ::SetLastError(ERROR_INVALID_PARAMETER);
+                 return FALSE;
+             }//end if (!hwnd)
+
+             ::SetLastError(ERROR_SUCCESS);
+             return NULL;
+         }
+         else
+             return farproc_SystemParametersInfoForDpi(uiAction, uiParam, pvParam, fWinIni, dpi);
+     }
+
+     EXPORT int WINAPI _GetSystemMetricsForDpi(int  nIndex, UINT dpi)
+     {
+         return ::GetSystemMetrics(nIndex);
+     }
+
+     EXPORT BOOL _AreDpiAwarenessContextsEqual(
+         DPI_AWARENESS_CONTEXT dpiContextA,
+         DPI_AWARENESS_CONTEXT dpiContextB
+     )
+     {
+         if (!dpiContextA || !dpiContextB)
+             return FALSE;
+         return TRUE;
+     }
+
+     EXPORT DPI_AWARENESS_CONTEXT WINAPI _GetWindowDpiAwarenessContext(HWND hwnd)
+     {
+         if (!::IsWindow(hwnd))
+             return NULL;
+         return DPI_AWARENESS_CONTEXT_SYSTEM_AWARE;
+     }
+
+     EXPORT BOOL WINAPI _AdjustWindowRectExForDpi(
+         LPRECT lpRect,
+         DWORD  dwStyle,
+         BOOL   bMenu,
+         DWORD  dwExStyle,
+         UINT   dpi
+     ) {
+         return AdjustWindowRectEx(lpRect, dwStyle, bMenu, dwExStyle);
+    }
 }
+
 
