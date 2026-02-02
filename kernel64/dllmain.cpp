@@ -1,9 +1,7 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG 
 #pragma comment(linker, "/ENTRY:DllMain")
 #pragma comment(lib, "ntdll.lib")
-
-#define WIN32_LEAN_AND_MEAN  
 
 #include "kernel64.h"
 
@@ -56,8 +54,14 @@ const char A_GAUMI[] = "GetApplicationUserModelId";
 const char A_GCPFN[] = "GetCurrentPackageFullName";
 const char A_GPI[] = "GetProcessInformation";
 const char A_GSCSI[] = "GetSystemCpuSetInformation";
-const char A_NTQSIEX[] = "NtQuerySystemInformationEx";
+//const char A_NTQSIEX[] = "NtQuerySystemInformationEx";
 const char A_GORE[] = "GetOverlappedResultEx";
+const char A_CTR2[] = "CreateFile2";
+#ifdef FIREFOX
+const TCHAR WIDE_OLE32[] = L"Ole32.dll";
+const char A_CIMTA[] = "CoIncrementMTAUsage";
+#endif // FIREFOX
+
 
 #if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX) && !defined(TRVIEW) && !defined(MAILBIRD) && !defined(DISCORD)
 const char PRIMARY_EXE[] = "chrome.exe";
@@ -90,6 +94,7 @@ const char PRIMARY_EXE[] = "Spotify.exe";
 #ifdef FIREFOX
 const char PRIMARY_EXE[] = "firefox.exe";
 #include <combaseapi.h>
+#pragma comment(lib, "Ole32.lib")
 #endif //FIREFOX
 
 #ifdef TRVIEW
@@ -345,6 +350,16 @@ typedef BOOL(WINAPI api_GetOverlappedResultEx)(HANDLE       hFile,
     DWORD        dwMilliseconds,
     BOOL         bAlertable);
 
+typedef HANDLE(WINAPI api_CreateFile2)(LPCWSTR lpFileName,
+    DWORD dwDesiredAccess,
+    DWORD dwShareMode,
+    DWORD dwCreationDisposition,
+    LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams);
+
+#ifdef FIREFOX
+typedef HRESULT(WINAPI api_CoIncrementMTAUsage)(CO_MTA_USAGE_COOKIE* pCookie);
+#endif
+
 typedef int(WINAPI api_swprintf_s)(
 wchar_t* buffer, size_t sizeOfBuffer,
 const wchar_t* format, 
@@ -372,6 +387,11 @@ api_GetProcessInformation* farproc_GetProcessInformation = 0;
 chrome_IsSandboxedProcess* farproc_IsSandboxedProcess = 0;
 api_GetSystemCpuSetInformation* farproc_GetSystemCpuSetInformation = 0;
 api_GetOverlappedResultEx* farproc_GetOverlappedResultEx = 0;
+api_CreateFile2* farproc_CreateFile2 = 0;
+#ifdef FIREFOX
+api_CoIncrementMTAUsage* farproc_CoIncrementMTAUsage = 0;
+#endif // FIREFOX
+
 
 api_swprintf_s* farproc_wsprintf_s = 0;
 
@@ -419,6 +439,7 @@ BOOL DllMain( HMODULE hModule,
                  farproc_GetProcessInformation = (api_GetProcessInformation*)::GetProcAddress(pKernel32, A_GPI);
                  farproc_GetSystemCpuSetInformation = (api_GetSystemCpuSetInformation*)::GetProcAddress(pKernel32, A_GSCSI);
                  farproc_GetOverlappedResultEx = (api_GetOverlappedResultEx*)::GetProcAddress(pKernel32, A_GORE);
+                 farproc_CreateFile2 = (api_CreateFile2*)::GetProcAddress(pKernel32, A_CTR2);
 
                  farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
                  farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
@@ -427,6 +448,11 @@ BOOL DllMain( HMODULE hModule,
                  //farproc_NtQuerySystemInformationEx = (api_NtQuerySystemInformationEx*)::GetProcAddress(pNtdll, A_NTQSIEX);
 #endif
                  farproc_NtSetInformationThread = (api_NtSetInformationThread*)::GetProcAddress(pNtdll, A_NTSIT);
+
+#ifdef FIREFOX
+                 farproc_CoIncrementMTAUsage = (api_CoIncrementMTAUsage*)::GetProcAddress(::GetModuleHandleW(WIDE_OLE32), A_CIMTA);
+#endif
+
 
 
                  //GPU SANDBOX preload (without \System32\ && \SysWOW64\)
@@ -968,15 +994,15 @@ extern "C"
                 lpContext->Ebp = static_cast<DWORD>(pctx.Rbp);
                 lpContext->Eip = static_cast<DWORD>(pctx.Rip);
 #else
-                lpContext->Eax = pctx->Eax;
-                lpContext->Ecx = pctx->Ecx;
-                lpContext->Edx = pctx->Edx;
-                lpContext->Ebx = pctx->Ebx;
-                lpContext->Edi = pctx->Edi;
-                lpContext->Esi = pctx->Esi;
-                lpContext->Esp = pctx->Esp;
-                lpContext->Ebp = pctx->Ebp;
-                lpContext->Eip = pctx->Eip;
+                lpContext->Eax = pctx.Eax;
+                lpContext->Ecx = pctx.Ecx;
+                lpContext->Edx = pctx.Edx;
+                lpContext->Ebx = pctx.Ebx;
+                lpContext->Edi = pctx.Edi;
+                lpContext->Esi = pctx.Esi;
+                lpContext->Esp = pctx.Esp;
+                lpContext->Ebp = pctx.Ebp;
+                lpContext->Eip = pctx.Eip;
 #endif // _AMD64_
 
                 //EFL
@@ -999,13 +1025,13 @@ extern "C"
                 lpContext->FloatSave.TagWord = pctx.FltSave.TagWord;
                 memcpy(lpContext->FloatSave.RegisterArea, pctx.FltSave.FloatRegisters, WOW64_SIZE_OF_80387_REGISTERS); //???
 #else
-                lpContext->FloatSave.ControlWord = pctx->FloatSave.ControlWord;
-                lpContext->FloatSave.DataOffset = pctx->FloatSave.DataOffset;
-                lpContext->FloatSave.DataSelector = pctx->FloatSave.DataSelector;
-                lpContext->FloatSave.ErrorOffset = pctx->FloatSave.ErrorOffset;
-                lpContext->FloatSave.ErrorSelector = pctx->FloatSave.ErrorSelector;
-                lpContext->FloatSave.StatusWord = pctx->FloatSave.StatusWord;
-                lpContext->FloatSave.TagWord = pctx->FloatSave.TagWord;
+                lpContext->FloatSave.ControlWord = pctx.FloatSave.ControlWord;
+                lpContext->FloatSave.DataOffset = pctx.FloatSave.DataOffset;
+                lpContext->FloatSave.DataSelector = pctx.FloatSave.DataSelector;
+                lpContext->FloatSave.ErrorOffset = pctx.FloatSave.ErrorOffset;
+                lpContext->FloatSave.ErrorSelector = pctx.FloatSave.ErrorSelector;
+                lpContext->FloatSave.StatusWord = pctx.FloatSave.StatusWord;
+                lpContext->FloatSave.TagWord = pctx.FloatSave.TagWord;
 #endif // _AMD64_
 
                 //null extended
@@ -1292,7 +1318,7 @@ DLL 	Kernel32.dll
     NTSTATUS QueryAppMemoryInformation(HANDLE ProcessHandle, APP_MEMORY_INFORMATION* pMemPI)
     {
         APP_MEMORY_INFORMATION local_pmi;
-        VM_COUNTERS_EX2 mem_counters;
+        VM_COUNTERS_EX2 mem_counters{};
         PROCESS_JOB_MEMORY_INFO jmi;
         UINT64 ava_commits = 0;
 
@@ -1522,6 +1548,14 @@ EXPORT BOOL WINAPI _GetSystemCpuSetInformation(
     ULONG                        Flags
 ) {
 
+#ifdef DEBUG_OUT
+    if (isdp)
+    {
+        WCHAR Buffer[1024];
+        wsprintf(Buffer, L"[%i] - GetSystemCpuSetInformation(%lx, %i, %lx, %i, %i)", ::GetCurrentThreadId(), Information, BufferLength, ReturnedLength, Process, Flags);
+        ::OutputDebugString(Buffer);
+    }//end if (isdp)
+#endif // DEBUG_OUT
     if (!farproc_GetSystemCpuSetInformation)
     {
         //windows 7
@@ -1536,6 +1570,11 @@ EXPORT BOOL WINAPI _GetSystemCpuSetInformation(
             NTSTATUS rt = NtQuerySystemInformationEx((_SYSTEM_INFORMATION_CLASS)SystemCPUSetInformation, &hProcess, sizeof(ULONG64), Information, BufferLength, ReturnedLength);
             if(SUCCEEDED(rt))
                 return TRUE;
+
+            //Firefox 147.0.2 bug fixed
+            if (ReturnedLength)
+                *ReturnedLength = 0;
+
             ::SetLastError(RtlNtStatusToDosError(rt));
             return FALSE;
         }
@@ -1629,7 +1668,7 @@ EXPORT BOOL WINAPI _IsGPU_Process(LPWSTR cmdline)
 }
 
 
-EXPORT BOOL _CompareObjectHandles(
+EXPORT BOOL WINAPI _CompareObjectHandles(
     HANDLE hFirstObjectHandle,
     HANDLE hSecondObjectHandle
 )
@@ -1656,6 +1695,80 @@ EXPORT BOOL _CompareObjectHandles(
     return FALSE;
 }
 
+
+EXPORT HANDLE WINAPI _CreateFile2(LPCWSTR lpFileName,
+    DWORD dwDesiredAccess,
+    DWORD dwShareMode,
+    DWORD dwCreationDisposition,
+    LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams) {
+    if (!farproc_CreateFile2)
+    {
+        if (pCreateExParams)
+        {
+            return ::CreateFileW(lpFileName,
+                dwDesiredAccess,
+                dwShareMode,
+                pCreateExParams->lpSecurityAttributes,
+                dwCreationDisposition,
+                pCreateExParams->dwSecurityQosFlags,
+                pCreateExParams->hTemplateFile
+            );
+        }
+        else
+        {
+            return ::CreateFileW(lpFileName,
+                dwDesiredAccess,
+                dwShareMode,
+                NULL,
+                dwCreationDisposition,
+                NULL,
+                NULL
+            );
+        }
+    }
+    else
+        return farproc_CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+}
+
+#ifdef FIREFOX
+//#include <combaseapi.h>
+EXPORT HRESULT WINAPI _CoCreateFreeThreadedMarshaler(
+    LPUNKNOWN punkOuter,
+    LPUNKNOWN* ppunkMarshal
+)
+{
+    return ::CoCreateFreeThreadedMarshaler(punkOuter, ppunkMarshal);
+}
+
+EXPORT HRESULT WINAPI _CoIncrementMTAUsage(CO_MTA_USAGE_COOKIE* pCookie)
+{
+    if (!farproc_CoIncrementMTAUsage)
+    {
+        return S_FALSE;
+    }
+    else
+        return  farproc_CoIncrementMTAUsage(pCookie);
+}
+
+EXPORT LPVOID WINAPI _CoTaskMemAlloc(SIZE_T cb)
+{
+    return ::CoTaskMemAlloc(cb);
+}
+
+EXPORT VOID WINAPI _CoTaskMemFree(LPVOID pv)
+{
+    return ::CoTaskMemFree(pv);
+}
+
+EXPORT HRESULT WINAPI _RoGetAgileReference(
+    AgileReferenceOptions options,
+    REFIID                riid,
+    IUnknown* pUnk,
+    IAgileReference** ppAgileReference
+) {
+    return E_NOINTERFACE;
+}
+#endif // FIREFOX
 
 
 void MPFLAT_preloader()
@@ -1893,6 +2006,13 @@ void MPFLAT_preloader()
                         ((cmdline[10] == L'e') || (cmdline[10] == L'E'))
 #endif // DISCORD
 
+#if defined(CIMMCO_EDIT)
+                        ((cmdline[0] == L'c') || (cmdline[0] == L'C')) &&
+                        ((cmdline[1] == L'i') || (cmdline[1] == L'I')) &&
+                        ((cmdline[2] == L'm') || (cmdline[2] == L'M')) &&
+                        ((cmdline[3] == L'c') || (cmdline[3] == L'C')) &&
+                        ((cmdline[4] == L'o') || (cmdline[4] == L'O'))
+#endif
                     )
                     {
                     memcpy_s1(&path_copy[last_div_i], i * sizeof(WCHAR), WIDE_MPFLAT_386, sizeof(WIDE_MPFLAT_386));
@@ -1912,12 +2032,9 @@ void MPFLAT_preloader()
     }//gpu
 }
 
-}
-
-
 void WLDP_preloader_MSEDGE()
 {
-    TCHAR path[MAX_PATH*2];
+    TCHAR path[MAX_PATH * 2];
 
     pWLDP_MSEDGE = ::LoadLibraryExW(WIDE_WLDP, NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (pWLDP_MSEDGE)
@@ -1939,7 +2056,7 @@ void WLDP_preloader_MSEDGE()
         }//end while (i--)
         pWLDP_MSEDGE = ::LoadLibrary(WIDE_WLDP);
     }//end if (::GetModuleFileName(::GetModuleHandle(NULL), path, sizeof(path)) == 0)
-    
+
 }
 
 
@@ -1968,7 +2085,7 @@ void DDRAW_FontCase_Service_SANDBOX_hook()
         SC_HANDLE SCS = ::OpenSCManager(NULL, NULL, NULL);
         if (SCS)
         {
-            SC_HANDLE SCS_FONTCACHE_SERVICE = ::OpenService(SCS, WIDE_SCS_FONTCACHE_SERVICENAME, SC_MANAGER_QUERY_LOCK_STATUS| SC_MANAGER_ENUMERATE_SERVICE);
+            SC_HANDLE SCS_FONTCACHE_SERVICE = ::OpenService(SCS, WIDE_SCS_FONTCACHE_SERVICENAME, SC_MANAGER_QUERY_LOCK_STATUS | SC_MANAGER_ENUMERATE_SERVICE);
             if (SCS_FONTCACHE_SERVICE)
             {
                 ::StartService(SCS_FONTCACHE_SERVICE, NULL, NULL);
@@ -1983,7 +2100,7 @@ void DDRAW_FontCase_Service_SANDBOX_hook()
     //SANDBOX!
     //public: static bool _cdecl ClientSideConnection::StartFontCacheService(unsigned int)
     HMODULE dwrite_module = ::LoadLibrary(WIDE_DWRITE);
-    if(dwrite_module)
+    if (dwrite_module)
     {
         DWORD st = 0;
         IMAGE_IMPORT_DESCRIPTOR* import_first_thunk = get_IMPORT_table_shift_prop_VA(dwrite_module, &st);
@@ -1993,15 +2110,15 @@ void DDRAW_FontCase_Service_SANDBOX_hook()
 }
 
 UINT Fill_fail_safe_CFMAPPING_Handle()
-{    
+{
     size_t i = MAX_TABLE_SAFE;
 
-    WCHAR name_buffer[MAX_PATH];      
+    WCHAR name_buffer[MAX_PATH];
 
     HANDLE* hsafe_table_cursor = hsafe_table;
     UINT SUCCESS_RET = 0;
 
-    if(!farproc_IsSandboxedProcess)
+    if (!farproc_IsSandboxedProcess)
         return 0;
 
     if (!farproc_IsSandboxedProcess())
@@ -2019,7 +2136,7 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
             {
                 if (::SetSecurityDescriptorDacl(&sd, TRUE, &acl_0, FALSE))
                 {
-                    SECURITY_ATTRIBUTES sa;
+                    SECURITY_ATTRIBUTES sa{};
                     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
                     sa.lpSecurityDescriptor = &sd;
                     sa.bInheritHandle = FALSE;
@@ -2042,6 +2159,49 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
     ::InitializeCriticalSection(&csec_fail_safe);
     return SUCCESS_RET;
 }
+
+
+EXPORT HRESULT WINAPI _PathCchRemoveBackslash(
+    PWSTR  pszPath,
+    size_t cchPath) {
+    if (!pszPath || !cchPath)
+        return ERROR_BAD_ARGUMENTS;
+    if (cchPath < 3)
+        return S_OK;
+
+    PWSTR  pszPath_local = &pszPath[cchPath - 1];
+    if (*pszPath_local == L'\\' || *pszPath_local == L'/')
+        *pszPath_local = L'\0';
+
+    return S_OK;
+}
+
+EXPORT HRESULT WINAPI _PathCchRemoveFileSpec(
+    PWSTR  pszPath,
+    size_t cchPath
+) {
+    if (!pszPath || !cchPath)
+        return ERROR_BAD_ARGUMENTS;
+    if (cchPath < 3)
+        return S_OK;
+
+    PWSTR  pszPath_local = &pszPath[cchPath - 1];
+    size_t i = cchPath;
+    while (--i)
+    {
+        if (*pszPath_local == L'\\' || *pszPath_local == L'/')
+        {
+            memset(pszPath_local, 0, (cchPath - i) * sizeof(WCHAR));
+            return S_OK;
+        }
+        pszPath_local--;
+    }
+    return S_FALSE;
+}
+
+}//END EXTERN "C"
+
+
 
 
 
@@ -2107,5 +2267,4 @@ if (win::GetVersion() < win::Version::WIN8_1) {
 
 
 */
-
 
