@@ -1,4 +1,4 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG 
 #include "kernel64.h"
 
@@ -1210,6 +1210,12 @@ EXPORT BOOL WINAPI _GetSystemPowerStatus(LPSYSTEM_POWER_STATUS lpSystemPowerStat
 
 EXPORT VOID WINAPI _GetSystemTime(LPSYSTEMTIME lpSystemTime) {
     return ::GetSystemTime(lpSystemTime);
+}
+
+EXPORT BOOL WINAPI _GetSystemTimes(PFILETIME lpIdleTime,
+    PFILETIME lpKernelTime,
+    PFILETIME lpUserTime) {
+    return ::GetSystemTimes(lpIdleTime, lpKernelTime, lpUserTime);
 }
 
 EXPORT VOID WINAPI _GetSystemTimeAsFileTime(LPFILETIME lpSystemTimeAsFileTime) {
@@ -4231,24 +4237,29 @@ EXPORT VOID WINAPI _CloseThreadpoolCleanupGroup(PTP_CLEANUP_GROUP ptpcg) {
     return ::CloseThreadpoolCleanupGroup(ptpcg);
 }
 
-#ifdef WIN32
-
-EXPORT LONG WINAPI _InterlockedExchange(LONG volatile* Target, LONG Value)
+//_Init...
+//_Is
+#ifndef _WIN64
+//#undef _InterlockedExchange
+EXPORT LONG WINAPI _InterlockedExchangee(LONG volatile* Target, LONG Value)
 {
     return ::InterlockedExchange(Target, Value);
 }
 
-EXPORT LONG WINAPI _InterlockedIncrement(LONG volatile* Addend)
+//#undef _InterlockedIncrement
+EXPORT LONG WINAPI _InterlockedIncrementt(LONG volatile* Addend)
 {
     return ::InterlockedIncrement(Addend);
 }
 
-EXPORT LONG WINAPI _InterlockedDecrement(LONG volatile* Addend)
+//#undef _InterlockedDecrement
+EXPORT LONG WINAPI _InterlockedDecrementt(LONG volatile* Addend)
 {
     return ::InterlockedDecrement(Addend);
 }
 
-EXPORT LONG WINAPI _InterlockedCompareExchange(
+//#undef _InterlockedCompareExchange
+EXPORT LONG WINAPI _InterlockedCompareExchanget(
     LONG volatile* Destination,
     LONG          ExChange,
     LONG          Comperand
@@ -4314,12 +4325,6 @@ EXPORT BOOL WINAPI _CopyFileA(LPCSTR lpExistingFileName,
     BOOL bFailIfExists) {
     return ::CopyFileA(lpExistingFileName, lpNewFileName, bFailIfExists);
 }
-
-EXPORT BOOL WINAPI _MoveFileA(LPCSTR lpExistingFileName,
-    LPCSTR lpNewFileName) {
-    return ::MoveFileA(lpExistingFileName, lpNewFileName);
-}
-
 
 
 EXPORT BOOL WINAPI _EnumDateFormatsExEx(DATEFMT_ENUMPROCEXEX lpDateFmtEnumProcExEx,
@@ -4401,14 +4406,6 @@ EXPORT BOOL WINAPI _IsBadReadPtr(CONST VOID* lp,
     return ::IsBadReadPtr(lp, ucb);
 }
 
-EXPORT BOOL WINAPI _IsBadReadPtr(HANDLE hFile,
-    LPOVERLAPPED lpOverlapped,
-    LPDWORD lpNumberOfBytesTransferred,
-    DWORD dwMilliseconds,
-    BOOL bAlertable) {
-    return ::GetOverlappedResultEx(hFile, lpOverlapped, lpNumberOfBytesTransferred, dwMilliseconds, bAlertable);
-}
-
 #ifdef _WIN64
 EXPORT BOOL WINAPI _RtlInstallFunctionTableCallback(DWORD64 TableIdentifier,
     DWORD64 BaseAddress,
@@ -4431,7 +4428,11 @@ EXPORT BOOL WINAPI _GetDiskFreeSpaceExA(LPCSTR lpDirectoryName,
     return ::GetDiskFreeSpaceExA(lpDirectoryName, lpFreeBytesAvailableToCaller, lpTotalNumberOfBytes, lpTotalNumberOfFreeBytes);
 }
 
-
+EXPORT BOOL WINAPI _SetThreadGroupAffinity(HANDLE hThread,
+    CONST GROUP_AFFINITY* GroupAffinity,
+    PGROUP_AFFINITY PreviousGroupAffinity) {
+    return ::SetThreadGroupAffinity(hThread, GroupAffinity, PreviousGroupAffinity);
+}
 
 //_LS
 EXPORT LPSTR  WINAPI _lstrcatA(LPSTR lpString1, // deprecated: annotation is as good as it gets
@@ -4513,5 +4514,4 @@ EXPORT int WINAPI _zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz_LAST(LPCSTR lpString) {
 
 
 }
-
 
