@@ -1,4 +1,4 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG
 
 //214
@@ -2284,6 +2284,18 @@ DLL 	User32.dll
 		LPPOINT lpPoint)
 	{
 		return PhysicalToLogicalPoint(hWnd, lpPoint);
+	}
+
+	EXPORT HWND WINAPI _ChildWindowFromPoint(HWND hWndParent,
+		POINT Point)
+	{
+		return ::ChildWindowFromPoint(hWndParent, Point);
+	}
+
+
+	EXPORT HWND WINAPI _GetClipboardOwner(VOID)
+	{
+		return ::GetClipboardOwner();
 	}
 }
 

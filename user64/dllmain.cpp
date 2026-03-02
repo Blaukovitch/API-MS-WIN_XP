@@ -1,9 +1,14 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG 
 //#define DEBUG_OUT 1
 #include <Windows.h>
 #define WIN32_LEAN_AND_MEAN             
 #define EXPORT __declspec( dllexport )
+#pragma comment(linker, "/ENTRY:DllMain")
+
+
+
+
 
 // ------ globals ------ 
 BOOL isdp = false;
