@@ -22,10 +22,12 @@
 //#define MAILBIRD 1
 //#define DISCORD 1
 //#define CIMMCO_EDIT 1
+//#define SIGNAL 1
 
 
 // ------ globals ------ 
 BOOL isdp = false;
+BOOL isgpu = false;
 
 #pragma code_seg(push, ".text$000004")
 const TCHAR WIDE_KERNEL32DLL[] = L"kernel32.dll";
@@ -34,6 +36,14 @@ const TCHAR WIDE_MPFLAT_386[] = L"XFPlat.DLL";
 const TCHAR WIDE_DWRITE[] = L"dwrite.dll";
 const TCHAR WIDE_SCS_FONTCACHE_SERVICENAME[] = L"FontCache";
 const TCHAR WIDE_WLDP[] = L"wldp.dll\0\0";
+const TCHAR WIDE_APIRT111[] = L"API-MS-WIN-CORE-REALTIME-L1-1-1.dll\0\0";
+const TCHAR WIDE_APISYNC27[] = L"API-MS-WIN-CORE-SYNCH-L1-2-7.dll\0\0";
+const TCHAR WIDE_APIHAN110[] = L"API-MS-WIN-CORE-HANDLE-L1-1-0.DLL\0\0";
+const TCHAR WIDE_APIWRT110[] = L"API-MS-WIN-CORE-WINRT-L1-1-0.DLL\0\0";
+const TCHAR WIDE_APISCA111[] = L"API-MS-WIN-SHCORE-SCALING-L1-1-1.DLL\0\0";
+const TCHAR WIDE_APIPWR110[] = L"API-MS-WIN-POWER-BASE-L1-1-0.DLL\0\0";
+const TCHAR WIDE_APIXIAIMC[] = L"XIAUTOMATIONCORE.DLL\0\0";
+const TCHAR WIDE_NETAPI64[]  = L"NETAPI64.DLL\0\0";
 const char A_DVM[] = "DiscardVirtualMemory";
 const char A_PVM[] = "PrefetchVirtualMemory";
 const char A_STI[] = "SetThreadInformation";
@@ -55,15 +65,17 @@ const char A_GCPFN[] = "GetCurrentPackageFullName";
 const char A_GPI[] = "GetProcessInformation";
 const char A_GSCSI[] = "GetSystemCpuSetInformation";
 //const char A_NTQSIEX[] = "NtQuerySystemInformationEx";
+const char A_NTQVM[] = "NtQueryVirtualMemory";
 const char A_GORE[] = "GetOverlappedResultEx";
 const char A_CTR2[] = "CreateFile2";
+const char A_STSCS[] = "SetThreadSelectedCpuSets";
 #ifdef FIREFOX
 const TCHAR WIDE_OLE32[] = L"Ole32.dll";
 const char A_CIMTA[] = "CoIncrementMTAUsage";
 #endif // FIREFOX
 
 
-#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX) && !defined(TRVIEW) && !defined(MAILBIRD) && !defined(DISCORD)
+#if !defined(BRAVE) && !defined(EDGE) && !defined(OPERA) && !defined(VIVALDI) && !defined(MAIL) && !defined(SPOOTIFY) && !defined(FIREFOX) && !defined(TRVIEW) && !defined(MAILBIRD) && !defined(DISCORD) && !defined(SIGNAL)
 const char PRIMARY_EXE[] = "chrome.exe";
 #endif
 
@@ -109,6 +121,9 @@ const char PRIMARY_EXE[] = "libcef.dll";
 const char PRIMARY_EXE[] = "discord.exe";
 #endif // DISCORD
 
+#ifdef SIGNAL
+const char PRIMARY_EXE[] = "Signal.exe";
+#endif // SIGNAL
 
 const char PRIMARY_EXE_Is_SANDBOXED_SA[] = "IsSandboxedProcess";
 const char SERVICE_QUERY_ADVAPI32_DLL[] = "ADVAPI32.DLL";
@@ -127,6 +142,7 @@ extern "C" BOOL checkl_RENDER_opt();
 extern "C" void MPFLAT_preloader();
 extern "C" void DDRAW_FontCase_Service_SANDBOX_hook();
 extern "C" void WLDP_preloader_MSEDGE();
+extern "C" HMODULE preload_DELAY_IMPORT(const TCHAR* libname);
 extern "C" UINT Fill_fail_safe_CFMAPPING_Handle();
 
 
@@ -242,6 +258,15 @@ HMODULE pKernel32;
 HMODULE pNtdll;
 HMODULE pMsvcrt;
 HMODULE pWLDP_MSEDGE = NULL;
+HMODULE pAPIMSRealTime111_DELAY_IMPORT = NULL;
+HMODULE pAPIMSYNC27_DELAY_IMPORT = NULL;
+
+HMODULE pAPIMSHAN110_DELAY_IMPORT = NULL;
+HMODULE pAPIMSWRT110_DELAY_IMPORT = NULL;
+HMODULE pAPIMSSCA111_DELAY_IMPORT = NULL;
+HMODULE pAPIMSPWR110_DELAY_IMPORT = NULL;
+HMODULE pAPIMSXIAIMC_DELAY_IMPORT = NULL;
+HMODULE pAPIMSNETAPI_DELAY_IMPORT = NULL;
 
 BOOL render_process = 0;
 
@@ -356,6 +381,10 @@ typedef HANDLE(WINAPI api_CreateFile2)(LPCWSTR lpFileName,
     DWORD dwCreationDisposition,
     LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams);
 
+typedef BOOL(WINAPI api_SetThreadSelectedCpuSets)(HANDLE      Thread,
+    const ULONG* CpuSetIds,
+    ULONG       CpuSetIdCount);
+
 #ifdef FIREFOX
 typedef HRESULT(WINAPI api_CoIncrementMTAUsage)(CO_MTA_USAGE_COOKIE* pCookie);
 #endif
@@ -388,12 +417,49 @@ chrome_IsSandboxedProcess* farproc_IsSandboxedProcess = 0;
 api_GetSystemCpuSetInformation* farproc_GetSystemCpuSetInformation = 0;
 api_GetOverlappedResultEx* farproc_GetOverlappedResultEx = 0;
 api_CreateFile2* farproc_CreateFile2 = 0;
+api_SetThreadSelectedCpuSets* farproc_SetThreadSelectedCpuSets = 0;
+PNT_QUERY_VIRTUAL_MEMORY NtQueryVirtualMemory = 0;
 #ifdef FIREFOX
 api_CoIncrementMTAUsage* farproc_CoIncrementMTAUsage = 0;
 #endif // FIREFOX
 
 
 api_swprintf_s* farproc_wsprintf_s = 0;
+
+
+THREAD_NAME_ENTRY* g_ThreadNames = NULL;
+CRITICAL_SECTION g_ThreadNamesLock;
+BOOL g_ThreadNamesInitialized = FALSE;
+
+// function to prevent mem leak
+static void RemoveThreadNameEntry(DWORD ThreadId)
+{
+    THREAD_NAME_ENTRY* entry;
+    THREAD_NAME_ENTRY* prev = NULL;
+
+    if (!g_ThreadNamesInitialized) return;
+
+    EnterCriticalSection(&g_ThreadNamesLock);
+
+    for (entry = g_ThreadNames; entry; prev = entry, entry = entry->Next) {
+        if (entry->ThreadId == ThreadId) {
+            if (prev) {
+                prev->Next = entry->Next;
+            }
+            else {
+                g_ThreadNames = entry->Next;
+            }
+
+            if (entry->Name.Buffer) {
+                LocalFree(entry->Name.Buffer);
+            }
+            LocalFree(entry);
+            break;
+        }
+    }
+
+    LeaveCriticalSection(&g_ThreadNamesLock);
+}
 
 BOOL DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -405,7 +471,8 @@ BOOL DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH: {
-        
+        InitializeCriticalSection(&g_ThreadNamesLock);
+        g_ThreadNamesInitialized = TRUE;
         //    checkl_stop_option();
 #ifdef DEBUG_OUT
         //for OUTPUT DEBUG STRINGS (if needed)
@@ -415,6 +482,8 @@ BOOL DllMain( HMODULE hModule,
 
          render_process = checkl_RENDER_opt();
       
+         //if (render_process)
+           //  ::SleepEx(7000, TRUE);
         
          if (!pKernel32)
          {
@@ -440,12 +509,14 @@ BOOL DllMain( HMODULE hModule,
                  farproc_GetSystemCpuSetInformation = (api_GetSystemCpuSetInformation*)::GetProcAddress(pKernel32, A_GSCSI);
                  farproc_GetOverlappedResultEx = (api_GetOverlappedResultEx*)::GetProcAddress(pKernel32, A_GORE);
                  farproc_CreateFile2 = (api_CreateFile2*)::GetProcAddress(pKernel32, A_CTR2);
+                 farproc_SetThreadSelectedCpuSets = (api_SetThreadSelectedCpuSets*)::GetProcAddress(pKernel32, A_STSCS);
 
                  farproc_NtSetInformationVirtualMemory = (api_NtSetInformationVirtualMemory*)::GetProcAddress(pNtdll, A_NTSIVM);
                  farproc_IsEnclaveTypeSupported = (api_IsEnclaveTypeSupported*)::GetProcAddress(pNtdll, A_IETS);
                  farproc_NtQueryInformationToken = (api_NtQueryInformationToken*)::GetProcAddress(pNtdll, A_NTQIT);
                  farproc_GetApplicationUserModelId = (api_GetApplicationUserModelId*)::GetProcAddress(pNtdll, A_GAUMI);
                  //farproc_NtQuerySystemInformationEx = (api_NtQuerySystemInformationEx*)::GetProcAddress(pNtdll, A_NTQSIEX);
+                 NtQueryVirtualMemory = (PNT_QUERY_VIRTUAL_MEMORY)::GetProcAddress(pNtdll, A_NTQVM);
 #endif
                  farproc_NtSetInformationThread = (api_NtSetInformationThread*)::GetProcAddress(pNtdll, A_NTSIT);
 
@@ -465,6 +536,16 @@ BOOL DllMain( HMODULE hModule,
                              //WLDP
                  WLDP_preloader_MSEDGE();
                  //#endif // EDGE
+
+                 //DELAY_IMPORT (gpu, render, ...)
+                 pAPIMSRealTime111_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_APIRT111);
+                 pAPIMSYNC27_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_APISYNC27);
+                 pAPIMSHAN110_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_APIHAN110);
+                 pAPIMSWRT110_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_APIWRT110);
+                 pAPIMSSCA111_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_APISCA111);
+                 pAPIMSXIAIMC_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_APIPWR110);
+                 pAPIMSNETAPI_DELAY_IMPORT = preload_DELAY_IMPORT(WIDE_NETAPI64);
+
              }//end if (!pKernel32)
          }//end pKernel32 && pNtdll
 
@@ -474,8 +555,10 @@ BOOL DllMain( HMODULE hModule,
 
         break; }
     case DLL_THREAD_ATTACH: {break;}
-    case DLL_THREAD_DETACH:
+    case DLL_THREAD_DETACH: { RemoveThreadNameEntry(GetCurrentThreadId()); }
     case DLL_PROCESS_DETACH: {
+        g_ThreadNamesInitialized = FALSE;
+        DeleteCriticalSection(&g_ThreadNamesLock);
         break;}
     }//end switch (ul_reason_for_call)
     return TRUE;
@@ -578,7 +661,7 @@ extern "C"
         LPCWSTR lpName) {
 
         //DACL shared section fix
-        WCHAR name_buffer[MAX_PATH];
+        WCHAR name_buffer[MAX_PATH] = { 0, 0 };
         if ((!lpName) && (hFile == INVALID_HANDLE_VALUE) && (lpFileMappingAttributes) && (flProtect == PAGE_READWRITE))
         {
             if (!render_process)
@@ -637,6 +720,8 @@ extern "C"
     Header 	memoryapi.h (include Windows.h, Memoryapi.h)
     Library 	onecore.lib
     DLL 	Kernel32.dll
+	
+	upgraded from: https://git.chefkiss.dev/WinRevived/Wrappers/src/branch/master/k32wrapwin7/wrap.c
     */
     EXPORT DWORD WINAPI _DiscardVirtualMemory(PVOID VirtualAddress,
         SIZE_T Size)
@@ -652,9 +737,70 @@ extern "C"
 
         if (!farproc_DiscardVirtualMemory)
         {
-            //Windows 7
+            NTSTATUS Status = 0;
+            MEMORY_BASIC_INFORMATION BasicInformation{};
+            PVOID VirtualAllocResult = nullptr;
 
-            ::VirtualAlloc(VirtualAddress, Size, MEM_RESET, PAGE_READWRITE);
+            //Windows 7
+            if (!VirtualAddress || !Size) {
+                return ERROR_INVALID_PARAMETER;
+            }
+
+            if ((ULONG_PTR)VirtualAddress & 0xFFF) {
+                // The virtual address must be page-aligned.
+                return ERROR_INVALID_PARAMETER;
+            }
+
+            if (Size & 0xFFF) {
+                // The size must be a multiple of the page size.
+                return ERROR_INVALID_PARAMETER;
+            }
+
+            //
+            // Check to see if the memory region provided is valid.
+            // The entire region must be readable, writable, and committed.
+            //
+
+            if (NtQueryVirtualMemory)
+            {
+                Status = NtQueryVirtualMemory(
+                    NtCurrentProcess(),
+                    VirtualAddress,
+                    MemoryBasicInformation,
+                    &BasicInformation,
+                    sizeof(BasicInformation),
+                    NULL);
+
+                if (NT_FAILED(Status)) {
+                    return RtlNtStatusToDosError(Status);
+                }
+
+                if (BasicInformation.RegionSize < Size ||
+                    BasicInformation.Protect != PAGE_READWRITE ||
+                    BasicInformation.State != MEM_COMMIT) {
+
+                    Status = STATUS_INVALID_PAGE_PROTECTION;
+                    return RtlNtStatusToDosError(Status);
+                }
+            }//end  if (NtQueryVirtualMemory)
+
+            //
+            // Tell the kernel that we won't be needing the contents of this memory
+            // anymore.
+            //
+
+           VirtualAllocResult = ::VirtualAlloc(
+                VirtualAddress,
+                Size,
+                MEM_RESET,
+                PAGE_READWRITE);
+
+            if (VirtualAllocResult != VirtualAddress) {
+                return GetLastError();
+            }
+
+            ::VirtualUnlock(VirtualAddress, Size);
+
             return ERROR_SUCCESS;
         }//end if (!farproc_DiscardVirtualMemory)
         return farproc_DiscardVirtualMemory(VirtualAddress, Size);
@@ -696,6 +842,8 @@ extern "C"
             }//end if (farproc_NtSetInformationVirtualMemory)
 
             //Windows 7
+            /*
+            * disable for Chrome 145
             while (!NumberOfEntries)
             {
                 ::VirtualAllocEx(hProcess, VirtualAddresses->VirtualAddress, VirtualAddresses->NumberOfBytes, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE); //MEM_PHYSICAL
@@ -703,6 +851,9 @@ extern "C"
                 NumberOfEntries--;
             }//end while (!NumberOfEntries)
             return TRUE;
+            */
+            ::SetLastError(E_NOTIMPL);
+            return FALSE;
         }//end if (!farproc_DiscardVirtualMemory)
         return farproc_PrefetchVirtualMemory(hProcess, NumberOfEntries, VirtualAddresses, Flags);
     }
@@ -734,46 +885,63 @@ extern "C"
         {
             //Windows 7
 
-            switch (ThreadInformationClass)
-            {
+            NTSTATUS Status;
+            THREADINFOCLASS ThreadInformationClassNt;
+            THREAD_POWER_THROTTLING_STATE ThrottlingState;
+
+            switch (ThreadInformationClass) {
             case ThreadMemoryPriority:
-            {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessSessionInformation, pThreadInformation, ThreadInformationSize);
-            }//end case ThreadMemoryPriority
-            case ThreadAbsoluteCpuPriority:
-            {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessForegroundInformation, pThreadInformation, ThreadInformationSize);
-            }//end  case ThreadAbsoluteCpuPriority:
-            case ThreadDynamicCodePolicy:
-            {
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)ProcessWorkingSetWatchEx, pThreadInformation, ThreadInformationSize);
-            }//end  case ThreadDynamicCodePolicy:
-
-            case ThreadInformationClassMax:
-            {
-                DWORD cmask = pThreadInformation->ControlMask & 0xFFFFFFFE;
-                if ((ThreadInformationClass != ThreadPowerThrottling) ||
-                    (ThreadInformationSize < (sizeof(THREADINFOCLASS) + 4)) ||
-                    (cmask != 0) ||
-                    ((~cmask & pThreadInformation->StateMask) != 0) ||
-                    (pThreadInformation->Version > 1)
-                    )
-                {
-                    ::SetLastError(STATUS_INVALID_PARAMETER);
-                    return  STATUS_INVALID_PARAMETER;
-                }//end  if (ThreadInformationClass != ThreadPowerThrottling)
-
-
-                THREAD_POWER_THROTTLING_STATE thread_info = { 1, pThreadInformation->ControlMask, pThreadInformation->StateMask };
-
-                return farproc_NtSetInformationThread(hThread, (THREADINFOCLASS)(0x31 | 0x20), &thread_info, ThreadInformationSize);
-
-            }//end  case ThreadDynamicCodePolicy:
-
-            default:
+                ThreadInformationClassNt = ThreadPagePriority;
                 break;
-            }//end switch (ThreadInformationClass)
-            return ERROR_SUCCESS;
+            case ThreadAbsoluteCpuPriority:
+                ThreadInformationClassNt = ThreadActualBasePriority;
+                break;
+            case ThreadDynamicCodePolicy:
+                ThreadInformationClassNt = ThreadDynamicCodePolicyInfo;
+                break;
+            case ThreadPowerThrottling:
+                ThreadInformationClassNt = ThreadPowerThrottlingState;
+                break;
+            default:
+                Status = STATUS_INVALID_PARAMETER;
+                goto Exit;
+            }
+
+            if (ThreadInformationClass == ThreadPowerThrottling) {
+                if (ThreadInformationSize < sizeof(THREAD_POWER_THROTTLING_STATE)) {
+                    Status = STATUS_INVALID_PARAMETER;
+                    goto Exit;
+                }
+
+                ThreadInformationSize = sizeof(THREAD_POWER_THROTTLING_STATE);
+                ThrottlingState = *pThreadInformation;
+
+                if (ThrottlingState.Version > 1 ||
+                    (ThrottlingState.ControlMask & 0xFFFFFFFE) != 0 ||
+                    (~ThrottlingState.ControlMask & ThrottlingState.StateMask) != 0) {
+
+                    Status = STATUS_INVALID_PARAMETER;
+                    goto Exit;
+                }
+
+                ThrottlingState.Version = 1;
+
+                pThreadInformation = &ThrottlingState;
+            }
+
+            Status = farproc_NtSetInformationThread(
+                hThread,
+                ThreadInformationClassNt,
+                pThreadInformation,
+                ThreadInformationSize);
+
+        Exit:
+            if (NT_FAILED(Status)) {
+                ::SetLastError(Status);
+                return FALSE;
+            }
+
+            return TRUE;
         }//end if (!farproc_DiscardVirtualMemory)
 
         return farproc_SetThreadInformation(hThread,
@@ -951,7 +1119,7 @@ extern "C"
         if (!farproc_SetProcessInformation)
         {
             //Windows 7
-
+     
         }
         else
             return farproc_SetProcessInformation(hProcess, ProcessInformationClass, ProcessInformation, ProcessInformationSize);
@@ -1584,6 +1752,27 @@ EXPORT BOOL WINAPI _GetSystemCpuSetInformation(
         return farproc_GetSystemCpuSetInformation(Information, BufferLength, ReturnedLength, Process, Flags);
 }
 
+
+EXPORT BOOL WINAPI _SetThreadSelectedCpuSets(
+    HANDLE      Thread,
+    const ULONG* CpuSetIds,
+    ULONG       CpuSetIdCount)
+{
+    if (!farproc_SetThreadSelectedCpuSets)
+    {
+        if (CpuSetIds == NULL) {
+            if (CpuSetIdCount != 0) {
+                ::SetLastError(STATUS_INVALID_PARAMETER);
+                return FALSE;
+            }
+        }
+    }
+    else
+        farproc_SetThreadSelectedCpuSets(Thread, CpuSetIds, CpuSetIdCount);
+    return TRUE;
+}
+
+
 /*
 * 
 * DISCROD PATCH 
@@ -1605,7 +1794,7 @@ Header 	winsock2.h
 Library 	Ws2_32.lib
 DLL 	Ws2_32.dll
 */
-#ifdef DISCORD
+//#ifdef DISCORD
 //#include <winsock2.h>
 //#include <Ws2tcpip.h>
 //#pragma comment(lib, "Ws2_32.lib")
@@ -1627,7 +1816,7 @@ EXPORT int WINAPI _GetHostNameW(
 
 
     
-#endif // DISCROD
+//#endif // DISCROD
 
 
 EXPORT BOOL WINAPI _GetOverlappedResultEx(HANDLE hFile,
@@ -1705,12 +1894,21 @@ EXPORT HANDLE WINAPI _CreateFile2(LPCWSTR lpFileName,
     {
         if (pCreateExParams)
         {
+            if (pCreateExParams->dwSize < sizeof(CREATEFILE2_EXTENDED_PARAMETERS)) {
+                ::SetLastError(STATUS_INVALID_PARAMETER);
+                return INVALID_HANDLE_VALUE;
+            }
+
+            ULONG  FlagsAndAttributes = pCreateExParams->dwFileFlags |
+                pCreateExParams->dwSecurityQosFlags |
+                pCreateExParams->dwFileAttributes;
+
             return ::CreateFileW(lpFileName,
                 dwDesiredAccess,
                 dwShareMode,
                 pCreateExParams->lpSecurityAttributes,
                 dwCreationDisposition,
-                pCreateExParams->dwSecurityQosFlags,
+                FlagsAndAttributes,
                 pCreateExParams->hTemplateFile
             );
         }
@@ -1776,6 +1974,7 @@ void MPFLAT_preloader()
     LPWSTR cmdline = ::GetCommandLine();
     if (_IsGPU_Process(cmdline))
     {
+        isgpu = true;
      //   ::MessageBox(NULL, L"AAAAAAAAAAAAA", L"GPU", MB_OK);
         size_t i = wcslen(cmdline);
 #ifdef MAIL
@@ -1959,6 +2158,16 @@ void MPFLAT_preloader()
                         ((cmdline[6] == L'd') || (cmdline[6] == L'D')) &&
 #endif // DISCORD
 
+#ifdef SIGNAL
+                        ((cmdline[0] == L's') || (cmdline[0] == L'S')) &&
+                        ((cmdline[1] == L'i') || (cmdline[1] == L'I')) &&
+                        ((cmdline[2] == L'g') || (cmdline[2] == L'G')) &&
+                        ((cmdline[3] == L'n') || (cmdline[3] == L'N')) &&
+                        ((cmdline[4] == L'a') || (cmdline[4] == L'A')) &&
+                        ((cmdline[5] == L'l') || (cmdline[5] == L'L')) &&
+#endif // SIGNAL
+
+
 #if  defined(BRAVE) || defined(OPERA)
                     ((cmdline[5] == L'.')) &&
                     ((cmdline[6] == L'e') || (cmdline[6] == L'E')) &&
@@ -2013,6 +2222,13 @@ void MPFLAT_preloader()
                         ((cmdline[3] == L'c') || (cmdline[3] == L'C')) &&
                         ((cmdline[4] == L'o') || (cmdline[4] == L'O'))
 #endif
+
+#ifdef SIGNAL
+                            ((cmdline[6] == L'.')) &&
+                            ((cmdline[7] == L'e') || (cmdline[7] == L'E')) &&
+                            ((cmdline[8] == L'x') || (cmdline[8] == L'X')) &&
+                            ((cmdline[9] == L'e') || (cmdline[9] == L'E'))
+#endif
                     )
                     {
                     memcpy_s1(&path_copy[last_div_i], i * sizeof(WCHAR), WIDE_MPFLAT_386, sizeof(WIDE_MPFLAT_386));
@@ -2049,7 +2265,8 @@ void WLDP_preloader_MSEDGE()
             pCursor--;
             if ((*pCursor == '\\') || (*pCursor == '/'))
             {
-                memcpy(&pCursor[1], WIDE_WLDP, sizeof(WIDE_WLDP));
+                memcpy(&pCursor[1], WIDE_WLDP, sizeof(WIDE_WLDP) * sizeof(TCHAR));
+                pCursor[wcslen(WIDE_WLDP) + 1] = L'\0';
                 pWLDP_MSEDGE = ::LoadLibrary(path);
                 return;
             }//end if ((*pCursor == '\\') || (*pCursor == '/'))
@@ -2057,6 +2274,30 @@ void WLDP_preloader_MSEDGE()
         pWLDP_MSEDGE = ::LoadLibrary(WIDE_WLDP);
     }//end if (::GetModuleFileName(::GetModuleHandle(NULL), path, sizeof(path)) == 0)
 
+}
+
+__forceinline HMODULE preload_DELAY_IMPORT(const TCHAR* libname)
+{
+    TCHAR path[MAX_PATH * 2];
+
+    SIZE_T i = ::GetModuleFileName(::GetModuleHandle(NULL), path, (MAX_PATH * 2)-1);
+    if (i)
+    {
+        TCHAR* pCursor = &path[i];
+        while (i--)
+        {
+            pCursor--;
+            if ((*pCursor == '\\') || (*pCursor == '/'))
+            {
+                const int posi = wcslen(libname) * sizeof(TCHAR);
+                memcpy(&pCursor[1], libname, posi);
+                pCursor[wcslen(libname) + 1] = L'\0';
+                return ::LoadLibrary(path);
+            }//end if ((*pCursor == '\\') || (*pCursor == '/'))
+        }//end while (i--)
+         return ::LoadLibrary(libname);
+    }//end if (::GetModuleFileName(::GetModuleHandle(NULL), path, sizeof(path)) == 0)
+    return NULL;
 }
 
 
@@ -2160,6 +2401,39 @@ UINT Fill_fail_safe_CFMAPPING_Handle()
     return SUCCESS_RET;
 }
 
+PCWSTR  __fastcall PatchGetEntryside(PCWSTR  pszPath, size_t path_len, size_t* new_path_len)
+{
+    if (!pszPath || !new_path_len)
+        return NULL;
+    if (path_len > 3)
+    {
+        if (wcsicmpf(pszPath, L"\\?"))
+        {
+            *new_path_len = path_len - (sizeof(L"\\?") / sizeof(WCHAR));
+            return (pszPath += wcslen(L"\\?"));
+        }
+
+        if (wcsicmpf(pszPath, L"\\?\\"))
+        {
+            *new_path_len = path_len - (sizeof(L"\\?\\") / sizeof(WCHAR));
+            return (pszPath += wcslen(L"\\?\\"));
+        }
+
+        if (wcsicmpf(pszPath, L"\\..\\"))
+        {
+            *new_path_len = path_len - (sizeof(L"\\..\\") / sizeof(WCHAR));
+            return (pszPath += wcslen(L"\\..\\"));
+        }
+
+        if (wcsicmpf(pszPath, L"\\"))
+        {
+            *new_path_len = path_len - (sizeof(L"\\") / sizeof(WCHAR));
+            return (pszPath += wcslen(L"\\"));
+        }
+    }
+
+    return pszPath;
+}
 
 EXPORT HRESULT WINAPI _PathCchRemoveBackslash(
     PWSTR  pszPath,
@@ -2198,6 +2472,44 @@ EXPORT HRESULT WINAPI _PathCchRemoveFileSpec(
     }
     return S_FALSE;
 }
+
+
+EXPORT HRESULT WINAPI _PathCchAppend(
+    PWSTR  pszPath,
+    size_t cchPath,
+    PCWSTR pszMore
+) {
+    if (!pszPath || !pszMore || !cchPath)
+        return E_INVALIDARG;
+
+    size_t pszMore_len = wcslen_MAXPATH(pszMore);
+
+    size_t pszPath_len = wcslen_MAXPATH(pszPath);
+
+    if(!pszMore_len || pszPath_len > cchPath)
+        return E_INVALIDARG;
+
+    //out of buffer len
+    if ((pszMore_len + pszPath_len) >= (cchPath + sizeof(WCHAR)))
+        return E_INVALIDARG;
+
+    if ((pszMore_len + pszPath_len) < cchPath)
+    {
+        size_t new_len = 0;
+        
+
+        PWSTR pszPath_cursor = &pszPath[pszMore_len];
+
+        if (pszPath_cursor[-1] != '\\')
+            pszPath_cursor[-1] = '\\';
+
+        memcpy1(pszPath, PatchGetEntryside(pszMore, pszMore_len, &new_len), new_len);
+        return S_OK;
+    }//END    if ((pszMore_len + pszPath_len) < cchPath)
+
+    return E_INVALIDARG;
+}
+
 
 }//END EXTERN "C"
 

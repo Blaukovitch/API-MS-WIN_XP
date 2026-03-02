@@ -1,13 +1,14 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG 
 
 #include <Windows.h>
 #define NTSTATUS signed long
 
-
+constexpr auto STATUS_INVALID_PAGE_PROTECTION = 0xC0000045;
 
 #define STATUS_SUCCESS   ((NTSTATUS)0x00000000L) // ntsubauth
-#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0
+#define NT_SUCCESS(Status) ((NTSTATUS)(Status)) >= 0
+#define NT_FAILED(Status) ((NTSTATUS)(Status)) < 0
 
 constexpr auto SystemCPUSetInformation = 0xAFL;
 

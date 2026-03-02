@@ -2506,6 +2506,12 @@ EXPORT ULONGLONG WINAPI _VerSetConditionMask(ULONGLONG ConditionMask,
         Condition);
 }
 
+EXPORT BOOL WINAPI _VerifyVersionInfoA(LPOSVERSIONINFOEXA lpVersionInformation,
+    DWORD dwTypeMask,
+    DWORDLONG dwlConditionMask) {
+    return ::VerifyVersionInfoA(lpVersionInformation, dwTypeMask, dwlConditionMask);
+}
+
 EXPORT BOOL WINAPI _VerifyVersionInfoW(LPOSVERSIONINFOEXW lpVersionInformation,
     DWORD dwTypeMask,
     DWORDLONG dwlConditionMask) {
@@ -4432,6 +4438,18 @@ EXPORT BOOL WINAPI _SetThreadGroupAffinity(HANDLE hThread,
     CONST GROUP_AFFINITY* GroupAffinity,
     PGROUP_AFFINITY PreviousGroupAffinity) {
     return ::SetThreadGroupAffinity(hThread, GroupAffinity, PreviousGroupAffinity);
+}
+
+//edge 144.
+EXPORT DWORD WINAPI _GetActiveProcessorCount(
+    WORD GroupNumber
+) {
+    return ::GetActiveProcessorCount(GroupNumber);
+}
+
+EXPORT LPVOID WINAPI _ConvertThreadToFiber(LPVOID lpParameter)
+{
+    return ::ConvertThreadToFiber(lpParameter);
 }
 
 //_LS

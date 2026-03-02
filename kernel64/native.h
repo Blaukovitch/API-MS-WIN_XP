@@ -1,10 +1,34 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG 
 
 #include <Windows.h>
 
 extern "C"
 {
+
+
+    // fix compiler bug
+#ifndef memcpy
+#define memcpy(dest, src, count) (RtlCopyMemory(dest, src, count), (dest))
+#endif
+
+#define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
+#define NT_SUCCESS(Status)   (((NTSTATUS)(Status)) >= 0)
+#define SafeAlloc(type, size) ((type*)LocalAlloc(LPTR, (size)))
+#define SafeFree(ptr) if ((ptr) != NULL) { LocalFree(ptr); (ptr) = NULL; }
+    /*
+#define ThreadNameInformation 38
+#define ThreadBasicInformation 0
+#define ObjectBasicInformation 0
+#define ThreadIdealProcessorEx 43
+#define ThreadPagePriority 24
+#define ThreadActualBasePriority 25
+#define ThreadDynamicCodePolicyInfo 42
+#define ThreadPowerThrottlingState 49
+*/
+
+
+
     //CONST
     constexpr auto KUSER_SHARED_DATA_LP = 0x07FFE0000UL;
 
@@ -15,6 +39,12 @@ extern "C"
     constexpr auto NX_SUPPORT_POLICY_ALWAYSON = 1;
     constexpr auto NX_SUPPORT_POLICY_OPTIN = 2;
     constexpr auto NX_SUPPORT_POLICY_OPTOUT = 3;
+
+    typedef enum _MEMORY_INFORMATION_CLASS {
+        MemoryBasicInformation
+    } MEMORY_INFORMATION_CLASS;
+
+
 
     typedef struct _KSYSTEM_TIME
     {
@@ -335,5 +365,14 @@ extern "C"
         MaxProcessInfoClass
     } PROCESSINFOCLASS;
 
+
     ///////////////
+    typedef NTSTATUS(NTAPI* PNT_QUERY_VIRTUAL_MEMORY)(
+        HANDLE ProcessHandle,
+        PVOID BaseAddress,
+        MEMORY_INFORMATION_CLASS MemoryInformationClass,
+        PVOID Buffer,
+        ULONG Length,
+        PULONG ResultLength
+        );
 }

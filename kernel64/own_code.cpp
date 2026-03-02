@@ -1,4 +1,4 @@
-//[80_PA] ELF, cracklab/exelab, 2023-2025
+//[80_PA] ELF, cracklab/exelab, 2023-2026
 //FLAG 
 
 
@@ -125,6 +125,60 @@ extern "C"
         p = s;
         while (*p)
             p++;
+
+        return p - s;
+    }
+
+   __inline int wtolower(const wchar_t c)
+    {
+        if (c >= L'A' && c <= L'Z')
+            return c + L'a' - L'A';
+        else
+            return c ^ 32;
+    }
+
+//#pragma intrinsic(_wcsicmp)
+    bool
+        wcsicmpf(const wchar_t* s, const wchar_t* d)
+    {
+        size_t i = MAX_PATH;
+        s--;
+        d--;
+        while (--i)
+        {
+            s++;
+            d++;
+            if(!*s && !*d)
+                return true;
+
+            if (*s == *d)
+                continue;
+
+            if (wtolower(*s) == wtolower(*d))
+                continue;
+
+            if (!*s || !*d)
+                return true;
+
+            return false;
+        }
+
+        return true;
+    }
+
+   __forceinline size_t
+        wcslen_MAXPATH(const wchar_t* s)
+    {
+        const wchar_t* p;
+
+        p = s;
+        size_t i = MAX_PATH;
+        while (*p)
+        {
+            p++;
+            if (--i)
+                return 0;
+        }
 
         return p - s;
     }
